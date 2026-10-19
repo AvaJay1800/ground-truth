@@ -1,8 +1,7 @@
 // Polygon drawing with Terra Draw on the "after" map, and the volume computation
 // that follows a finished polygon.
 import type { Map as MLMap } from 'maplibre-gl';
-import { TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode } from 'terra-draw';
-import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
+import type { TerraDraw } from 'terra-draw';
 import { diffWindow } from '../data/site';
 import { lonLatToUtm } from '../math/utm';
 import { polygonVolume, type Ring } from '../math/volume';
@@ -14,8 +13,12 @@ export interface Measure {
   destroy(): void;
 }
 
-export function createMeasure(map: MLMap): Measure {
-  const draw = new TerraDraw({
+/** Terra Draw loads on first use, so the first paint does not pay for it. */
+export async function createMeasure(map: MLMap): Promise<Measure> {
+  const [{ TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode }, { TerraDrawMapLibreGLAdapter }] = await Promise.all([
+    import('terra-draw'), import('terra-draw-maplibre-gl-adapter'),
+  ]);
+  const draw: TerraDraw = new TerraDraw({
     adapter: new TerraDrawMapLibreGLAdapter({ map }),
     modes: [
       new TerraDrawPolygonMode({

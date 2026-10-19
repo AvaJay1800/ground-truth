@@ -2,6 +2,35 @@
 
 Dated notes on what was built, what went wrong, what I learned, and one clip-worthy moment per phase.
 
+## 2026-10-19 — Phase 5: polish and publish
+
+**Built**
+
+- Field view on phones: opens on the change map with the summary at the top and the details sheet tucked to a handle; the legend sits over the map; 3D is a tap away but not the default. The sheet carries the four tabs.
+- Accessibility: every control is a real button, input or select with a label; the swipe handle is a keyboard slider; tabs are a tab list; hover readouts are live regions; the water class is hatched and every legend class is labeled, so color is never the only cue; focus rings on everything; reduced-motion shortens the camera moves; forced-colors keeps the swatches. Drawing a polygon still needs a pointer, and the README says so.
+- Performance: Terra Draw and geotiff.js now load on first use, which takes them and the raster decoders out of the first paint. The first load is MapLibre, Preact and the app, about 360 KB gzipped, plus the basemap and terrain tiles in view. No raster is ever loaded whole.
+- PWA: a web manifest, generated icons, and a small hand-written service worker that caches the app shell and never touches data or range requests. No plugin added.
+- README rewritten: what, why, how to run the pipeline and the app, deploy steps, assumptions and limitations, credits.
+- Deploy tooling: `pipeline/upload_r2.py` (boto3 against R2's S3 API, incremental, sets CORS) and `app/scripts/publish.mjs` (production build with the R2 data URL, copied into the live site's repo with cache and service-worker headers).
+
+**Problems hit**
+
+- A mobile CSS rule I added landed before the one it was meant to replace, so the legend kept its old place. Cascade order, not specificity.
+- The desktop app's preview launcher still points at the old portfolio project; Vite was run directly for verification throughout.
+
+**Learned**
+
+- Code splitting by intent works better than by size: nobody needs the TIFF decoders until they hover or draw, so that is when they arrive.
+- A service worker for a demo should cache the shell and nothing else. Caching tiles or GeoTIFF ranges would make the numbers stale the first time the pipeline reruns.
+
+**Clip-worthy moment**
+
+On a phone, the first screen is the sentence, the change map and a legend. Everything a superintendent needs in the field, and the whole spreadsheet is one tap down.
+
+**Assumed and pending**
+
+- Hosting: an R2 bucket with public access and an API token are needed to upload the 160 MB of data; the live site repo deploys on push to main via Cloudflare Pages. Both steps wait on credentials and a final go-ahead.
+
 ## 2026-10-19 — Phase 4: timeline, scheduling and climate
 
 **Built**

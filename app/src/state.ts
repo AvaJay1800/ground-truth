@@ -73,6 +73,10 @@ export interface Readout {
 export const units = signal<UnitSystem>('us');
 export const mode = signal<ViewMode>('compare');
 export const panel = signal<Panel>('measure');
+/** Phones: the panel is a bottom sheet that can be tucked away to see the map. */
+export const panelOpen = signal(true);
+export const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+export const isPhone = typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches;
 export const swipe = signal(0.5);           // fraction of width showing "before"
 export const imagery = signal(false);
 // 3D view settings: which surface the terrain is built from, whether the change

@@ -112,6 +112,7 @@ a { color: inherit; }
 
 /* Right panel */
 .panel { top: 12px; right: 60px; bottom: 44px; width: var(--panel-w); display: flex; flex-direction: column; overflow: hidden; }
+.sheet-toggle { display: none; }
 .tabs { display: flex; border-bottom: 1px solid var(--line); }
 .tabs button { flex: 1; border: 0; background: transparent; padding: 11px 8px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
@@ -202,6 +203,14 @@ table.data td, table.whatif td { padding: 4px 6px 4px 0; border-bottom: 1px soli
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+@media (forced-colors: active) {
+  .card, .stat, .seg, .btn { border: 1px solid CanvasText; }
+  .swatch, .legend .sw, .chart .bar, .strip .fillbar { forced-color-adjust: none; }
+}
+
 /* Phone */
 @media (max-width: 760px) {
   :root { --panel-w: 100vw; }
@@ -210,7 +219,14 @@ table.data td, table.whatif td { padding: 4px 6px 4px 0; border-bottom: 1px soli
   .header .summary .lead { font-size: 13px; }
   .header .row { margin-top: 6px; }
   .panel { top: auto; right: 0; left: 0; bottom: 0; width: auto; max-height: 46vh; border-radius: var(--radius) var(--radius) 0 0; }
-  .legend { bottom: calc(46vh + 10px); width: min(300px, calc(100vw - 24px)); }
+  .panel.tucked { max-height: none; }
+  .panel.tucked .tabs, .panel.tucked .panel-body { display: none; }
+  .sheet-toggle { display: block; width: 100%; border: 0; background: transparent; padding: 10px 14px; font-weight: 600; color: var(--ink); text-align: center; }
+  .sheet-toggle::before { content: ""; display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 8px; }
+  .legend { bottom: 78px; left: 12px; width: min(230px, 62vw); padding: 8px 10px; }
+  .legend li { font-size: 11px; }
+  .legend p { display: none; }
+  .stage:has(.panel:not(.tucked)) .legend, .stage:has(.panel:not(.tucked)) .timeline { display: none; }
   .readout { display: none; }
   .swipe-label { bottom: calc(46vh + 16px); }
   .timeline { bottom: calc(46vh + 10px); width: calc(100vw - 24px); }

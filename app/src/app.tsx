@@ -4,7 +4,7 @@ import type { Map as MLMap, MapMouseEvent } from 'maplibre-gl';
 import { createMapPair, type MapPair } from './map/createMap';
 import { createMeasure, type Measure } from './map/measure';
 import { loadSite, sampleAt } from './data/site';
-import { drape3d, epoch3d, error, exaggeration, haul, imagery, mode, panel, readout, summary, swipe, timeline } from './state';
+import { drape3d, epoch3d, error, exaggeration, haul, imagery, isPhone, mode, panel, panelOpen, readout, reducedMotion, summary, swipe, timeline } from './state';
 import { HaulPanel } from './ui/HaulPanel';
 import { SchedulePanel } from './ui/SchedulePanel';
 import { Timeline } from './ui/Timeline';
@@ -25,6 +25,9 @@ export function App() {
   useEffect(() => {
     let disposed = false;
     const disposers: Array<() => void> = [];
+    // Field view on a phone: open on the change map with the sheet tucked away, so the
+    // summary, the colors and the readout are what you see first. 3D stays a tap away.
+    if (isPhone) { mode.value = 'change'; panelOpen.value = false; }
     (async () => {
       await loadSite();
       if (disposed || !beforeEl.current || !afterEl.current) return;
@@ -32,7 +35,7 @@ export function App() {
       pair.current = p;
       if (import.meta.env.DEV) (window as unknown as { __gt: MapPair }).__gt = p;
       await p.ready;
-      measure.current = createMeasure(p.after);
+      createMeasure(p.after).then((m) => { if (!disposed) measure.current = m; else m.destroy(); });
 
       disposers.push(effect(() => {
         const m = mode.value;
@@ -61,8 +64,9 @@ export function App() {
       disposers.push(effect(() => {
         const on = mode.value === '3d';
         p.setTerrain(on ? epoch3d.value : null, exaggeration.value);
-        if (on && !was3d) p.after.easeTo({ pitch: 62, bearing: -25, zoom: Math.max(p.after.getZoom(), 13.2), duration: 900 });
-        if (!on && was3d) p.after.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+        const dur = reducedMotion ? 0 : 900;
+        if (on && !was3d) p.after.easeTo({ pitch: 62, bearing: -25, zoom: Math.max(p.after.getZoom(), 13.2), duration: dur });
+        if (!on && was3d) p.after.easeTo({ pitch: 0, bearing: 0, duration: dur ? 600 : 0 });
         was3d = on;
       }));
 
@@ -118,14 +122,17 @@ export function App() {
       <Readout />
       <Timeline />
 
-      <aside class="card panel" aria-label="Details">
+      <aside class={`card panel ${panelOpen.value ? '' : 'tucked'}`} aria-label="Details">
+        <button type="button" class="sheet-toggle" aria-expanded={panelOpen.value} onClick={() => (panelOpen.value = !panelOpen.value)}>
+          {panelOpen.value ? 'Hide details' : 'Measure, plan, schedule, about'}
+        </button>
         <div class="tabs" role="tablist">
           <button type="button" role="tab" aria-selected={panel.value === 'measure'} onClick={() => (panel.value = 'measure')}>Measure</button>
           <button type="button" role="tab" aria-selected={panel.value === 'haul'} onClick={() => (panel.value = 'haul')}>Plan a cleanup</button>
           <button type="button" role="tab" aria-selected={panel.value === 'schedule'} onClick={() => (panel.value = 'schedule')}>Schedule</button>
           <button type="button" role="tab" aria-selected={panel.value === 'about'} onClick={() => (panel.value = 'about')}>About this data</button>
         </div>
-        <div class="panel-body" role="tabpanel">
+        <div class="panel-body" role="tabpanel" aria-label={panel.value ?? 'details'}>
           {panel.value === 'measure' && <MeasurePanel onDraw={() => { mode.value = 'change'; measure.current?.start(); }} onClear={() => measure.current?.clear()} />}
           {panel.value === 'haul' && <HaulPanel />}
           {panel.value === 'schedule' && <SchedulePanel />}

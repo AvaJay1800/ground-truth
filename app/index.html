@@ -4,12 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#1c1f24" />
     <meta name="description" content="Ground Truth compares lidar surveys of the Oso valley before and after the 2014 landslide, measures what moved, and turns the change into an earthwork plan." />
+    <meta property="og:title" content="Ground Truth: the Oso landslide, measured" />
+    <meta property="og:description" content="Two lidar surveys, what moved and how much, and what it would take to clear it. Every number traceable to a source." />
+    <meta property="og:type" content="website" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
     <title>Ground Truth: the Oso landslide, measured</title>
   </head>
   <body>
     <div id="app"></div>
+    <noscript>Ground Truth needs JavaScript to draw the maps. The data sources and findings are described in the project README.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
