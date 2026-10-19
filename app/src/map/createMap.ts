@@ -1,7 +1,7 @@
 // Two MapLibre maps, one per survey, kept in lockstep. The "before" map sits on top
 // and is clipped to the left of the swipe handle; the "after" map shows through on
 // the right and carries the change layer and the drawing tools.
-import { Map as MLMap, NavigationControl, ScaleControl, type StyleSpecification } from 'maplibre-gl';
+import { Map as MLMap, NavigationControl, ScaleControl, type RasterDEMTileSource, type StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { FeatureCollection } from 'geojson';
 import { BASEMAP_STYLE, DATA, IMAGERY_ATTRIBUTION, IMAGERY_TILES, INITIAL_VIEW } from '../config';
@@ -19,6 +19,8 @@ export interface MapPair {
   setTerrain(epoch: Epoch | null, exaggeration: number): void;
   /** Add (once) the what-if cleanup corridor, haul routes and sites; then show or hide them. */
   setHaul(data: HaulData | null, visible: boolean): void;
+  /** Swap the 2014 terrain for a projected "percent cleared" step (null = the real 2014 surface). */
+  setProjection(step: number | null): void;
   /** Frame the corridor, both pits and the roads between them. */
   fitHaul(data: HaulData, padding?: { top: number; right: number; bottom: number; left: number }): void;
   destroy(): void;
@@ -92,6 +94,14 @@ export function createMapPair(beforeEl: HTMLElement, afterEl: HTMLElement, bound
         if (!m.getSource('haul-corridor')) addHaulLayers(m, data);
         for (const id of HAUL_LAYERS) m.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
       }
+    },
+    setProjection(step) {
+      // MapLibre lets a raster-dem source change its tile URLs in place; hillshade and 3D
+      // terrain both re-render from the new tiles. The before map is untouched.
+      const src = after.getSource('dem') as (RasterDEMTileSource | undefined);
+      if (!src) return;
+      const url = step ? DATA.projectionTiles(step) : DATA.tiles('after');
+      if (src.tiles?.[0] !== url) src.setTiles([url]);
     },
     fitHaul(data, padding = { top: 80, right: 420, bottom: 60, left: 40 }) {
       let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;

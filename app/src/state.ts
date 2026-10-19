@@ -5,7 +5,7 @@ import type { VolumeResult } from './math/volume';
 
 export type ViewMode = 'compare' | 'change' | '3d';
 export type Epoch = 'before' | 'after';
-export type Panel = 'measure' | 'haul' | 'about' | null;
+export type Panel = 'measure' | 'haul' | 'schedule' | 'about' | null;
 
 export interface HaulRoute { distance_m: number; duration_s: number; geometry: { type: 'LineString'; coordinates: number[][] } }
 export interface HaulSite {
@@ -105,3 +105,28 @@ export const loadMin = signal(5);
 export const dumpMin = signal(2);
 export const speedFactor = signal(0.8);
 export const efficiency = signal(0.83);
+
+// Phase 4: calendar, weather and the timeline.
+export interface ClimateData {
+  generated: string;
+  site: { lat: number; lon: number };
+  source: { name: string; url: string; grid_point: { lat: number; lon: number; elevation_m: number }; years: number[]; note: string };
+  thresholds: { rain_day_mm: number; heavy_rain_mm: number; snow_day_cm: number; freezing: string };
+  months: Array<import('./math/schedule').MonthClimate & { name: string }>;
+  noaa_normals: Array<{ month: number; station: string; name: string; precip_mm: number | null; tmax_c: number | null; tmin_c: number | null; rain_days_ge_0_1in: number | null; rain_days_ge_0_5in: number | null }> | null;
+  noaa_source: { name: string; url: string } | null;
+}
+export const climate = signal<ClimateData | null>(null);
+export const startYear = signal(2014);
+export const startMonth = signal(4);      // April 2014: the earliest a cleanup like this could have begun
+export const shiftHours = signal(10);
+export const daysPerWeek = signal(5);
+export const secondShift = signal(false);
+export const daylightOnly = signal(true);
+export const weatherOn = signal(true);
+export const heavyRainLoss = signal(1);
+export const rainLoss = signal(0.25);
+export const freezingLoss = signal(1);
+export const snowLoss = signal(1);
+/** Timeline position as a fraction of the volume cleared, 0..1. */
+export const timeline = signal(0);

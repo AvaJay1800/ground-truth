@@ -4,8 +4,11 @@ import type { Map as MLMap, MapMouseEvent } from 'maplibre-gl';
 import { createMapPair, type MapPair } from './map/createMap';
 import { createMeasure, type Measure } from './map/measure';
 import { loadSite, sampleAt } from './data/site';
-import { drape3d, epoch3d, error, exaggeration, haul, imagery, mode, panel, readout, summary, swipe } from './state';
+import { drape3d, epoch3d, error, exaggeration, haul, imagery, mode, panel, readout, summary, swipe, timeline } from './state';
 import { HaulPanel } from './ui/HaulPanel';
+import { SchedulePanel } from './ui/SchedulePanel';
+import { Timeline } from './ui/Timeline';
+import { PROJECTION_STEPS } from './config';
 import { Header } from './ui/Header';
 import { Legend } from './ui/Legend';
 import { Readout } from './ui/Readout';
@@ -33,11 +36,20 @@ export function App() {
 
       disposers.push(effect(() => {
         const m = mode.value;
-        p.setChangeVisible(m === 'change' || (m === '3d' && drape3d.value));
+        // While the timeline is scrubbed the change colors would contradict the projected surface.
+        const scrubbing = panel.value === 'schedule' && timeline.value > 0;
+        p.setChangeVisible((m === 'change' || (m === '3d' && drape3d.value)) && !scrubbing);
         if (m === 'compare') { if (swipe.value === 0) swipe.value = 0.5; } else { swipe.value = 0; }
       }));
       disposers.push(effect(() => p.setImagery(imagery.value)));
-      disposers.push(effect(() => p.setHaul(haul.value, panel.value === 'haul')));
+      disposers.push(effect(() => p.setHaul(haul.value, panel.value === 'haul' || panel.value === 'schedule')));
+      // Timeline: snap the fraction cleared to the nearest projected terrain step.
+      disposers.push(effect(() => {
+        const f = panel.value === 'schedule' ? timeline.value : 0;
+        const pct = f * 100;
+        const step = pct < PROJECTION_STEPS[0] / 2 ? null : PROJECTION_STEPS.reduce((a, b) => (Math.abs(b - pct) < Math.abs(a - pct) ? b : a));
+        p.setProjection(step);
+      }));
       // Opening the cleanup tab frames the whole haul: corridor, both pits, the roads between.
       let framed = false;
       disposers.push(effect(() => {
@@ -104,16 +116,19 @@ export function App() {
       <Header />
       <Legend />
       <Readout />
+      <Timeline />
 
       <aside class="card panel" aria-label="Details">
         <div class="tabs" role="tablist">
           <button type="button" role="tab" aria-selected={panel.value === 'measure'} onClick={() => (panel.value = 'measure')}>Measure</button>
           <button type="button" role="tab" aria-selected={panel.value === 'haul'} onClick={() => (panel.value = 'haul')}>Plan a cleanup</button>
+          <button type="button" role="tab" aria-selected={panel.value === 'schedule'} onClick={() => (panel.value = 'schedule')}>Schedule</button>
           <button type="button" role="tab" aria-selected={panel.value === 'about'} onClick={() => (panel.value = 'about')}>About this data</button>
         </div>
         <div class="panel-body" role="tabpanel">
           {panel.value === 'measure' && <MeasurePanel onDraw={() => { mode.value = 'change'; measure.current?.start(); }} onClear={() => measure.current?.clear()} />}
           {panel.value === 'haul' && <HaulPanel />}
+          {panel.value === 'schedule' && <SchedulePanel />}
           {panel.value === 'about' && <AboutPanel />}
         </div>
       </aside>

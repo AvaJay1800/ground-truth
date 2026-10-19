@@ -1,7 +1,5 @@
 import { CYCLE_DEFAULTS, SOILS, TRUCKS } from '../content/haulDefaults';
-import {
-  balance, bankToLoose, cycleTime, effectiveLoad_m3, loadsNeeded, planDays, trucksForTarget, trucksToSaturateLoader,
-} from '../math/haul';
+import { haulModel } from '../model/haulModel';
 import { formatArea, formatDistance, formatVolume, type UnitSystem } from '../math/units';
 import {
   capacityOverride, dumpMin, efficiency, haul, haulScope, hoursPerDay, loadMin, nTrucks, payloadOverride,
@@ -14,40 +12,11 @@ const num = (e: Event) => Number((e.target as HTMLInputElement).value);
 export function HaulPanel() {
   const h = haul.value;
   const u = units.value;
-  if (!h) return <p class="hint">The cleanup what-if needs haul.json from the pipeline (pipeline/haul_prep.py).</p>;
-
-  // Scope: the SR 530 corridor preset, or whatever the user drew with the Measure tool.
+  const m = haulModel();
+  if (!h || !m) return <p class="hint">The cleanup what-if needs haul.json from the pipeline (pipeline/haul_prep.py).</p>;
   const drawn = volume.value;
-  const scopeIsDrawn = haulScope.value === 'drawn' && !!drawn;
-  const remove_bank = scopeIsDrawn ? drawn!.fill_m3 : h.corridor.volumes.fill_m3;
-  const need_bank = scopeIsDrawn ? drawn!.cut_m3 : h.corridor.volumes.cut_m3;
-  const scopeArea = scopeIsDrawn ? drawn!.polygon_area_m2 : h.corridor.volumes.corridor_area_m2;
-
-  const soilBase = SOILS.find((s) => s.id === soilId.value) ?? SOILS[0];
-  const soil = { ...soilBase, swell: swellOverride.value ?? soilBase.swell, shrink: shrinkOverride.value ?? soilBase.shrink };
-  const truckBase = TRUCKS.find((t) => t.id === truckId.value) ?? TRUCKS[0];
-  const truck = { ...truckBase, capacity_m3: capacityOverride.value ?? truckBase.capacity_m3, payload_t: payloadOverride.value ?? truckBase.payload_t };
-
-  const b = balance(remove_bank, need_bank, soil.shrink);
-  const surplusLoose = bankToLoose(b.surplus_bank_m3, soil.swell);
-  const borrowLoose = bankToLoose(b.borrow_bank_m3, soil.swell);
-  const load = effectiveLoad_m3(truck, soil);
-  const loadsOut = loadsNeeded(surplusLoose, load);
-  const loadsIn = loadsNeeded(borrowLoose, load);
-
-  const rd = h.routes.disposal, rb = h.routes.borrow;
-  const cycleOut = cycleTime({ haul_out_min: rd.out.duration_s / 60, haul_back_min: rd.back.duration_s / 60, load_min: loadMin.value, dump_min: dumpMin.value, speed_factor: speedFactor.value });
-  // Borrow trucks run empty to the pit and loaded back, so the loaded leg is the return.
-  const cycleIn = cycleTime({ haul_out_min: rb.back.duration_s / 60, haul_back_min: rb.out.duration_s / 60, load_min: loadMin.value, dump_min: dumpMin.value, speed_factor: speedFactor.value });
-
-  const plan = planDays({
-    legs: [{ loads: loadsOut, cycle_min: cycleOut }, { loads: loadsIn, cycle_min: cycleIn }],
-    n_trucks: nTrucks.value, hours_per_day: hoursPerDay.value, efficiency: efficiency.value, load_min: loadMin.value,
-  });
-  const saturate = trucksToSaturateLoader(cycleOut, loadMin.value);
-  const for30 = trucksForTarget(loadsOut + loadsIn, (loadsOut * cycleOut + loadsIn * cycleIn) / Math.max(1, loadsOut + loadsIn), hoursPerDay.value, 30, efficiency.value);
-  const area = formatArea(scopeArea, u);
-  const weightLimited = truck.payload_t / soil.loose_t_per_m3 < truck.capacity_m3;
+  const area = formatArea(m.scopeArea_m2, u);
+  const { soil, soilBase, truck, truckBase, balance: b, plan } = m;
 
   return (
     <div>
@@ -55,16 +24,16 @@ export function HaulPanel() {
 
       <h2>1. What to move</h2>
       <div class="seg" role="group" aria-label="Scope">
-        <button type="button" aria-pressed={!scopeIsDrawn} onClick={() => (haulScope.value = 'corridor')}>SR 530 corridor</button>
-        <button type="button" aria-pressed={scopeIsDrawn} onClick={() => (haulScope.value = 'drawn')} disabled={!drawn} title={drawn ? '' : 'Draw an area in the Measure tab first'}>Area I drew</button>
+        <button type="button" aria-pressed={!m.scopeIsDrawn} onClick={() => (haulScope.value = 'corridor')}>SR 530 corridor</button>
+        <button type="button" aria-pressed={m.scopeIsDrawn} onClick={() => (haulScope.value = 'drawn')} disabled={!drawn} title={drawn ? '' : 'Draw an area in the Measure tab first'}>Area I drew</button>
       </div>
       <p class="hint" style={{ marginTop: 8 }}>
-        {scopeIsDrawn ? 'The shape you drew.' : `The highway, ${Math.round(h.corridor.half_width_m / 0.3048)} ft either side of its centerline, through the slide.`}{' '}
+        {m.scopeIsDrawn ? 'The shape you drew.' : `The highway, ${Math.round(h.corridor.half_width_m / 0.3048)} ft either side of its centerline, through the slide.`}{' '}
         {area.value} {area.unit}. Volumes are in bank measure (as the ground sits) above the level of detection; the lake surface is excluded.
       </p>
       <div class="stat-grid">
-        <div class="stat"><div class="k"><span class="swatch fill" aria-hidden="true" />Debris to remove</div><div class="v">{formatVolume(remove_bank, u).value}<small>{formatVolume(remove_bank, u).unit}</small></div><div class="u">bank</div></div>
-        <div class="stat"><div class="k"><span class="swatch cut" aria-hidden="true" />Ground to restore</div><div class="v">{formatVolume(need_bank, u).value}<small>{formatVolume(need_bank, u).unit}</small></div><div class="u">bank</div></div>
+        <div class="stat"><div class="k"><span class="swatch fill" aria-hidden="true" />Debris to remove</div><div class="v">{formatVolume(m.remove_bank, u).value}<small>{formatVolume(m.remove_bank, u).unit}</small></div><div class="u">bank</div></div>
+        <div class="stat"><div class="k"><span class="swatch cut" aria-hidden="true" />Ground to restore</div><div class="v">{formatVolume(m.need_bank, u).value}<small>{formatVolume(m.need_bank, u).unit}</small></div><div class="u">bank</div></div>
       </div>
 
       <h2>2. Material</h2>
@@ -81,14 +50,14 @@ export function HaulPanel() {
 
       <h2>3. Balance</h2>
       <ul>
-        <li>Reused on site to restore lost ground: <b>{vol(b.reuse_bank_m3, u)}</b> bank (fills {vol(need_bank, u)} after compaction).</li>
-        <li>Surplus hauled to disposal: <b>{vol(b.surplus_bank_m3, u)}</b> bank, which is <b>{vol(surplusLoose, u)}</b> loose in the trucks.</li>
-        <li>Brought in from the borrow pit: <b>{vol(b.borrow_bank_m3, u)}</b> bank{b.borrow_bank_m3 > 0 ? `, ${vol(borrowLoose, u)} loose` : ''}.</li>
+        <li>Reused on site to restore lost ground: <b>{vol(b.reuse_bank_m3, u)}</b> bank (fills {vol(m.need_bank, u)} after compaction).</li>
+        <li>Surplus hauled to disposal: <b>{vol(b.surplus_bank_m3, u)}</b> bank, which is <b>{vol(m.surplusLoose, u)}</b> loose in the trucks.</li>
+        <li>Brought in from the borrow pit: <b>{vol(b.borrow_bank_m3, u)}</b> bank{b.borrow_bank_m3 > 0 ? `, ${vol(m.borrowLoose, u)} loose` : ''}.</li>
       </ul>
 
       <h2>4. Trucks</h2>
       <label class="field">Truck type
-        <select value={truckId.value} onChange={(e) => { truckId.value = (e.target as HTMLSelectElement).value; capacityOverride.value = null; payloadOverride.value = null; loadMin.value = CYCLE_DEFAULTS.load_min[(e.target as HTMLSelectElement).value as 'adt' | 'highway'] ?? loadMin.value; }}>
+        <select value={truckId.value} onChange={(e) => { const id = (e.target as HTMLSelectElement).value; truckId.value = id; capacityOverride.value = null; payloadOverride.value = null; loadMin.value = CYCLE_DEFAULTS.load_min[id as 'adt' | 'highway'] ?? loadMin.value; }}>
           {TRUCKS.map((t) => <option value={t.id} key={t.id}>{t.label}</option>)}
         </select>
       </label>
@@ -97,8 +66,8 @@ export function HaulPanel() {
         <label class="field">Payload (t)<input type="number" step="0.5" min="1" value={truck.payload_t} onChange={(e) => (payloadOverride.value = num(e))} /></label>
       </div>
       <p class="hint">
-        Each load carries {load.toFixed(1)} m³ loose ({formatVolume(load, u).value} {formatVolume(load, u).unit}), {weightLimited ? 'limited by payload weight' : 'a full heaped body'}.
-        {' '}<b>{loadsOut.toLocaleString()}</b> loads out to disposal{loadsIn > 0 ? <>, <b>{loadsIn.toLocaleString()}</b> loads in from borrow</> : ''}. {truckBase.source}
+        Each load carries {m.load_m3.toFixed(1)} m³ loose ({formatVolume(m.load_m3, u).value} {formatVolume(m.load_m3, u).unit}), {m.weightLimited ? 'limited by payload weight' : 'a full heaped body'}.
+        {' '}<b>{m.loadsOut.toLocaleString()}</b> loads out to disposal{m.loadsIn > 0 ? <>, <b>{m.loadsIn.toLocaleString()}</b> loads in from borrow</> : ''}. {truckBase.source}
       </p>
 
       <h2>5. Routes</h2>
@@ -125,14 +94,15 @@ export function HaulPanel() {
         <label class="field">Efficiency<input type="number" step="0.01" min="0.3" max="1" value={efficiency.value} onChange={(e) => (efficiency.value = num(e))} /></label>
       </div>
       <div class="stat-grid">
-        <div class="stat"><div class="k">Round trip to disposal</div><div class="v">{Math.round(cycleOut)}<small>min</small></div><div class="u">load, haul, dump, return</div></div>
+        <div class="stat"><div class="k">Round trip to disposal</div><div class="v">{Math.round(m.cycleOut_min)}<small>min</small></div><div class="u">load, haul, dump, return</div></div>
         <div class="stat"><div class="k">Total loads</div><div class="v">{plan.loads.toLocaleString()}</div><div class="u">{Math.round(plan.loads_per_day)} per day at this pace</div></div>
         <div class="stat wide">
           <div class="k">Working days with {nTrucks.value} trucks</div>
           <div class="v">{plan.days < 1 ? plan.days.toFixed(1) : Math.ceil(plan.days).toLocaleString()}<small>days</small></div>
-          <div class="u">{plan.loader_bound ? `the loader is the limit: ${saturate} trucks keep it busy, more will wait in line` : `${saturate} trucks would keep the loader busy; ${for30} trucks would finish in 30 days`}</div>
+          <div class="u">{plan.loader_bound ? `the loader is the limit: ${m.saturate} trucks keep it busy, more will wait in line` : `${m.saturate} trucks would keep the loader busy; ${m.trucksFor30Days} trucks would finish in 30 days`}</div>
         </div>
       </div>
+      <p class="hint">Calendar, weekends, weather and daylight come next, in the Schedule tab.</p>
       <details>
         <summary>Assumptions in the cycle</summary>
         <ul>{CYCLE_DEFAULTS.notes.map((n) => <li key={n}>{n}</li>)}</ul>

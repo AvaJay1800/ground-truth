@@ -2,6 +2,39 @@
 
 Dated notes on what was built, what went wrong, what I learned, and one clip-worthy moment per phase.
 
+## 2026-10-19 — Phase 4: timeline, scheduling and climate
+
+**Built**
+
+- `pipeline/climate_prep.py`: thirty years (1991 to 2020) of daily weather for the site from Open-Meteo's historical API (ERA5 reanalysis, free, no key), reduced to monthly means: precipitation, rain days, heavy-rain days, snow days, freezing days, high and low temperature, daylight hours. NOAA's 1991 to 2020 normals for Darrington Ranger Station, 18 km up the valley, stored beside them as a cross-check.
+- `app/src/math/schedule.ts`: a day-by-day simulation with weekends, an optional Saturday, a second shift, a daylight cap, and expected weather losses per month, summed into week rows with a finish date. Eight vitest cases.
+- `pipeline/make_projection_tiles.py`: five full terrain tile sets (20 to 100 percent cleared) where the corridor surface is interpolated between the March 24, 2014 ground and the 2013 grade. 2,095 tiles, 66 MB.
+- Schedule tab: start month and year, shift length, days per week, second shift, daylight only, weather on or off, four editable loss rules, a single-series week chart with hover and a table view, a what-if table (more trucks, Saturdays, second shift, later start, no weather) with one-click apply, and a twelve-month climate strip with the scheduled months highlighted.
+- Timeline slider under the map: percent cleared maps to the schedule's calendar and swaps the 2014 terrain source for the nearest projected step, so the hillshade and the 3D view both move. Labeled as a projection while scrubbing; the change colors hide so they cannot contradict the surface.
+- Shared `haulModel` and `scheduleModel` so the cleanup panel, the schedule and the slider all compute from one set of inputs.
+
+**Problems hit**
+
+- My first NOAA station id was Davenport in eastern Washington. The NCEI search endpoint found the right one, Darrington RS (USC00451992).
+- The reanalysis runs about 20 percent wetter than the Darrington gauge (100 in a year against 83). The strip says so and the lost-day counts are described as cautious. NOAA's rain-day counts came back empty in metric units, so the cross-check is on totals and temperatures.
+- A dataviz skill run before the chart: single series, 24 px cap, rounded tips, hairline grid, text in ink tokens, hover tooltip plus a table view, no legend for one series.
+
+**Learned**
+
+- Weather is a fraction, not a switch. Spreading expected lost days across a month makes every November week slower rather than deleting random days, which is both easier to explain and closer to how estimators think.
+- The what-ifs show the real levers. With the defaults, a second shift and four more trucks each save about five weeks; starting in July instead of April costs thirteen, because the job runs into the wet season.
+- Swapping a raster-dem source's tile URLs is enough to animate terrain in MapLibre; no second map, no custom layers.
+
+**Clip-worthy moment**
+
+Drag the slider and the debris apron on SR 530 sinks back to the 2013 grade week by week, with the finish date on the panel: August 6, 2014, with eight trucks and ten-hour days, fifteen of those days lost to rain. Move the start to July and the date jumps to November, the chart's bars thinning as the rain returns.
+
+**Assumed**
+
+- Weather loss rules: a heavy-rain day (≥ 0.5 in) and a freezing or snow day lose the whole day; an ordinary rain day loses a quarter. Editable.
+- Daylight only: productive hours capped at daylight minus one. A second shift under that cap gains nothing, which the math makes visible.
+- The timeline interpolates the corridor surface uniformly. A real job clears from one end; the slider's percent cleared is the volume fraction, not a place.
+
 ## 2026-10-19 — Phase 3: earthwork logistics (mass haul)
 
 **Built**

@@ -53,6 +53,15 @@ Nothing in this section describes what happened in 2014. It is the scope, the si
 | Highway dump body | Ox Bodies Stampede product page: 14 to 21 ft bodies, 13.6 to 28.9 yd³ | A 16 ft body with 54 in sides taken as 16 yd³; payload 16 t assumed under Washington axle limits (RCW 46.44) |
 | Cycle defaults | Assumptions: 5 min load (2.5 for the highway truck), 2 min dump, 0.8 loaded speed factor, 10 h days, 0.83 efficiency | All editable in the panel |
 
+## Climate (Phase 4)
+
+| Item | Source | Notes |
+|---|---|---|
+| Daily weather 1991 to 2020 | Open-Meteo Historical Weather API (ERA5 reanalysis), grid point 48.26, -121.91, 141 m, fetched 2026-10-19 | Reanalysis on a roughly 9 km grid, not a gauge. Reduced to monthly means by `pipeline/climate_prep.py` |
+| Thresholds | rain day ≥ 2.5 mm (0.1 in), heavy ≥ 12.7 mm (0.5 in), snow day ≥ 1 cm, freezing = daily high ≤ 0 °C | Conventional NWS-style thresholds |
+| Cross-check | NOAA NCEI U.S. Climate Normals 1991 to 2020, monthly, Darrington RS (USC00451992), 18 km east in the same valley | Annual precipitation 83 in at the gauge against 100 in in the reanalysis; temperatures within 1 to 3 °C. The reanalysis is used for counts, so lost days lean cautious. |
+| Projected terrain | `pipeline/make_projection_tiles.py`: inside the corridor, surface = 2014 + f × (2013 − 2014) at f = 0.2 to 1.0 | A projection for the timeline slider, labeled as such in the app. Never used for any measurement. |
+
 ## Where the files come from
 
 - Washington Lidar Portal, Washington State Department of Natural Resources: https://lidarportal.dnr.wa.gov. The portal's own page script calls three endpoints (`/project`, `/query`, `/download`); `pipeline/fetch_data.py` uses the same ones with a study-area polygon so only the tiles around the slide are pulled.

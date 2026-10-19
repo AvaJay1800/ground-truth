@@ -10,8 +10,13 @@ export const DATA = {
   diff: `${DATA_BASE}/diff_m.tif`,
   water: `${DATA_BASE}/water_mask.tif`,
   haul: `${DATA_BASE}/haul.json`,
+  climate: `${DATA_BASE}/climate.json`,
   tiles: (set: 'before' | 'after' | 'change') => `${DATA_BASE}/tiles/${set}/{z}/{x}/{y}.png`,
+  projectionTiles: (step: number) => `${DATA_BASE}/tiles/projection/${step}/{z}/{x}/{y}.png`,
 };
+
+/** Percent-cleared steps the pipeline cut terrain tiles for (make_projection_tiles.py). */
+export const PROJECTION_STEPS = [20, 40, 60, 80, 100];
 
 // Basemaps. Both are free, need no key, and carry their own attribution.
 export const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
