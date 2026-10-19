@@ -92,8 +92,14 @@ def main(argv: list[str]) -> int:
     bucket, prefix = env["R2_BUCKET"], env.get("R2_PREFIX", "").strip("/")
 
     if not args.dry_run:
-        s3.put_bucket_cors(Bucket=bucket, CORSConfiguration=CORS)
-        print(f"CORS set on {bucket} for daviddonnell.com and localhost")
+        # Editing CORS is a bucket setting and needs an Admin token. With an Object Read & Write
+        # token this is refused, which is fine: set the same rule once in the dashboard
+        # (bucket > Settings > CORS Policy); the JSON is in README.md.
+        try:
+            s3.put_bucket_cors(Bucket=bucket, CORSConfiguration=CORS)
+            print(f"CORS set on {bucket} for daviddonnell.com and localhost")
+        except Exception as e:  # botocore ClientError, AccessDenied
+            print(f"could not set CORS with this token ({type(e).__name__}); set it in the dashboard instead")
     if args.cors_only:
         return 0
 

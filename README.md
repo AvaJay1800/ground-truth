@@ -68,7 +68,13 @@ In development the Vite config serves `../data/derived` at `/data` with HTTP ran
 The app is a static build served under `daviddonnell.com/demos/ground-truth/`; the data lives in a Cloudflare R2 bucket.
 
 1. Create an R2 bucket, enable public access (an `r2.dev` URL or a custom domain), and make an API token with object read and write. Copy `.env.example` to `.env` and fill it in.
-2. `.venv/Scripts/python pipeline/upload_r2.py` uploads `data/derived` (about 160 MB) and sets CORS for daviddonnell.com and localhost. Re-runs only send changed files.
+2. `.venv/Scripts/python pipeline/upload_r2.py` uploads `data/derived` (about 160 MB). Re-runs only send changed files. It also tries to set CORS; an Object Read & Write token cannot, so in that case set this rule once in the dashboard (bucket, Settings, CORS Policy):
+
+   ```json
+   [{"AllowedOrigins": ["https://daviddonnell.com", "https://www.daviddonnell.com", "http://localhost:5173", "http://127.0.0.1:5173"],
+     "AllowedMethods": ["GET", "HEAD"], "AllowedHeaders": ["Range", "Content-Type"],
+     "ExposeHeaders": ["Content-Range", "Content-Length", "Accept-Ranges", "ETag"], "MaxAgeSeconds": 86400}]
+   ```
 3. `cd app && node scripts/publish.mjs --site <path to the daviddonnell-ai checkout> --data https://<bucket public host>/oso` builds with the production data URL and copies the build into that repo's `demos/ground-truth/`, adding cache and service-worker headers to its `_headers`.
 4. Commit and push the site repo. Cloudflare Pages deploys from `main`.
 
