@@ -13,6 +13,8 @@ export interface MapPair {
   ready: Promise<void>;
   setChangeVisible(v: boolean): void;
   setImagery(v: boolean): void;
+  /** Turn 3D terrain on the "after" map on or off, built from the given survey. */
+  setTerrain(epoch: Epoch | null, exaggeration: number): void;
   destroy(): void;
 }
 
@@ -25,7 +27,13 @@ export function createMapPair(beforeEl: HTMLElement, afterEl: HTMLElement, bound
 
   const ready = Promise.all([
     whenLoaded(before).then(() => addEpochLayers(before, 'before', b)),
-    whenLoaded(after).then(() => { addEpochLayers(after, 'after', b); addChangeLayer(after, b); }),
+    whenLoaded(after).then(() => {
+      // The "after" map also carries the 2013 surface, hidden, so the 3D view can switch
+      // between the two without a second map.
+      addEpochLayers(after, 'before', b, 'dem-before', 'hillshade-before', false);
+      addEpochLayers(after, 'after', b);
+      addChangeLayer(after, b);
+    }),
   ]).then(() => undefined);
 
   let syncing = false;
@@ -51,6 +59,23 @@ export function createMapPair(beforeEl: HTMLElement, afterEl: HTMLElement, bound
         }
         m.setLayoutProperty('imagery', 'visibility', v ? 'visible' : 'none');
       }
+    },
+    setTerrain(epoch, exaggeration) {
+      if (!after.getSource('dem')) return;
+      if (!epoch) {
+        after.setTerrain(null);
+        after.setSky({ 'sky-color': 'rgba(0,0,0,0)', 'horizon-color': 'rgba(0,0,0,0)', 'fog-color': 'rgba(0,0,0,0)' } as never);
+        after.setLayoutProperty('hillshade', 'visibility', 'visible');
+        after.setLayoutProperty('hillshade-before', 'visibility', 'none');
+        return;
+      }
+      after.setTerrain({ source: epoch === 'before' ? 'dem-before' : 'dem', exaggeration });
+      after.setSky({
+        'sky-color': '#c9d6e3', 'horizon-color': '#e8edf2', 'fog-color': '#dfe5ec',
+        'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.25,
+      });
+      after.setLayoutProperty('hillshade', 'visibility', epoch === 'after' ? 'visible' : 'none');
+      after.setLayoutProperty('hillshade-before', 'visibility', epoch === 'before' ? 'visible' : 'none');
     },
     destroy() { before.remove(); after.remove(); },
   };
@@ -80,8 +105,11 @@ function firstSymbolLayer(map: MLMap): string | undefined {
   return map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
 }
 
-function addEpochLayers(map: MLMap, epoch: Epoch, bounds: [number, number, number, number]): void {
-  map.addSource('dem', {
+function addEpochLayers(
+  map: MLMap, epoch: Epoch, bounds: [number, number, number, number],
+  sourceId = 'dem', layerId = 'hillshade', visible = true,
+): void {
+  map.addSource(sourceId, {
     type: 'raster-dem',
     tiles: [DATA.tiles(epoch)],
     tileSize: 256,
@@ -94,9 +122,10 @@ function addEpochLayers(map: MLMap, epoch: Epoch, bounds: [number, number, numbe
       : 'Lidar: WSDOT / Quantum Spatial, March 24, 2014 via Washington DNR',
   });
   map.addLayer({
-    id: 'hillshade',
+    id: layerId,
     type: 'hillshade',
-    source: 'dem',
+    source: sourceId,
+    layout: { visibility: visible ? 'visible' : 'none' },
     paint: {
       'hillshade-exaggeration': 0.6,
       'hillshade-shadow-color': '#2b2f36',

@@ -2,6 +2,33 @@
 
 Dated notes on what was built, what went wrong, what I learned, and one clip-worthy moment per phase.
 
+## 2026-10-19 — Phase 2: 3D and the plain-English summary
+
+**Built**
+
+- 3D mode: MapLibre terrain on the "after" map, built from either survey (a hidden copy of the 2013 terrain source rides along on the same map), with the change colors draped on the surface, a vertical exaggeration choice (1, 1.3, 2) and a sky so the tilted view has a horizon. Entering 3D tilts the camera; leaving it flattens the map again.
+- Plain-English summary at the top of the page, with a "More, and how we know" fold. It is a template over `summary.json` in `app/src/content/summaryText.ts`, unit tested word for word. No language model, no API key, nothing server-side. The numbers change only when the pipeline runs, and a template can be checked by a reviewer in a way a generated sentence cannot.
+- `pipeline/fetch_fallback_dem.py`: a 10 m USGS 3DEP grid for the study box, used by the tile step only where neither lidar survey has data.
+
+**Problems hit**
+
+- Terrain tiles cannot be transparent, and neither survey fills the study box, so the first 3D view had the ground falling to sea level outside the lidar, a 300-foot cliff around a parallelogram. The fallback grid fixes the edges; it is current USGS data and never touches a difference or a volume. Documented in DATA_SOURCES.md.
+- Tiles were skipped where neither survey had data, so MapLibre got 404s at the edges. Every tile inside the advertised bounds is now written.
+
+**Learned**
+
+- MapLibre drapes any raster layer over terrain for free, so the classed change tiles from Phase 1 became the 3D skin with no new data.
+- A terrain source cannot be swapped on a layer; the clean way to offer two surfaces is two sources and two hillshade layers with visibility toggled.
+
+**Clip-worthy moment**
+
+Tilt the map, switch between "2013 surface" and "March 24, 2014" and watch the hillside's upper third disappear and reappear as a fan across the valley. The change colors stay put, so the orange apron sits exactly where the ground now is.
+
+**Assumed**
+
+- Vertical exaggeration defaults to 1.3; the control shows the factor so nobody mistakes it for true scale.
+- The USGS fallback is acceptable for edges outside both surveys. If not, those tiles could fall back to the 2013 surface alone where it exists and sea level elsewhere.
+
 ## 2026-10-19 — Phase 1: core change viewer
 
 **Built**

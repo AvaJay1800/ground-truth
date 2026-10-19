@@ -13,10 +13,10 @@ export function MeasurePanel({ onDraw, onClear }: Props) {
       <h2>Measure an area</h2>
       <p class="hint">
         Draw a shape on the map to get cut, fill and net volume inside it. Click to add corners, click the first
-        corner again to finish. {mode.value === 'compare' ? 'Switch to "What changed" to draw.' : ''}
+        corner again to finish. {mode.value !== 'change' ? 'Drawing switches the map to "What changed".' : ''}
       </p>
       <div class="row" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <button type="button" class="btn primary" onClick={onDraw} disabled={mode.value !== 'change'} aria-pressed={drawing.value}>
+        <button type="button" class="btn primary" onClick={onDraw} aria-pressed={drawing.value}>
           {drawing.value ? 'Drawing…' : 'Draw area'}
         </button>
         <button type="button" class="btn" onClick={onClear} disabled={!v && !drawing.value}>Clear</button>

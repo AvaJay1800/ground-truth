@@ -4,7 +4,7 @@ import type { Map as MLMap, MapMouseEvent } from 'maplibre-gl';
 import { createMapPair, type MapPair } from './map/createMap';
 import { createMeasure, type Measure } from './map/measure';
 import { loadSite, sampleAt } from './data/site';
-import { error, imagery, mode, panel, readout, summary, swipe } from './state';
+import { drape3d, epoch3d, error, exaggeration, imagery, mode, panel, readout, summary, swipe } from './state';
 import { Header } from './ui/Header';
 import { Legend } from './ui/Legend';
 import { Readout } from './ui/Readout';
@@ -31,10 +31,20 @@ export function App() {
       measure.current = createMeasure(p.after);
 
       disposers.push(effect(() => {
-        p.setChangeVisible(mode.value === 'change');
-        if (mode.value === 'change') { swipe.value = 0; } else if (swipe.value === 0) { swipe.value = 0.5; }
+        const m = mode.value;
+        p.setChangeVisible(m === 'change' || (m === '3d' && drape3d.value));
+        if (m === 'compare') { if (swipe.value === 0) swipe.value = 0.5; } else { swipe.value = 0; }
       }));
       disposers.push(effect(() => p.setImagery(imagery.value)));
+      // 3D: terrain from the chosen survey, a tilted camera on the way in, flat on the way out.
+      let was3d = false;
+      disposers.push(effect(() => {
+        const on = mode.value === '3d';
+        p.setTerrain(on ? epoch3d.value : null, exaggeration.value);
+        if (on && !was3d) p.after.easeTo({ pitch: 62, bearing: -25, zoom: Math.max(p.after.getZoom(), 13.2), duration: 900 });
+        if (!on && was3d) p.after.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+        was3d = on;
+      }));
 
       for (const m of [p.before, p.after]) {
         m.on('mousemove', onHover);

@@ -91,6 +91,13 @@ a { color: inherit; }
 .header h1 { font-size: 17px; margin: 0 0 2px; letter-spacing: -0.01em; }
 .header p { margin: 0; color: var(--muted); font-size: 13px; }
 .header .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.header .summary { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+.header .summary .lead { color: var(--ink); font-size: 14px; line-height: 1.5; margin: 0; }
+.header .summary details { border: 0; padding: 0; margin: 6px 0 0; }
+.header .summary summary { font-size: 12px; color: var(--muted); font-weight: 600; }
+.header .summary details p { font-size: 13px; color: var(--ink-2); margin: 6px 0 0; }
+.header select { border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface-solid); padding: 3px 6px; }
+.link { border: 0; background: none; padding: 0; color: var(--ink); text-decoration: underline; font-weight: 600; font-size: inherit; }
 
 .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px; background: var(--surface-solid); }
 .seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 999px; font-weight: 600; color: var(--muted); }
@@ -159,7 +166,8 @@ details p, details ul { margin-top: 8px; }
 @media (max-width: 760px) {
   :root { --panel-w: 100vw; }
   .header { max-width: calc(100vw - 70px); padding: 10px 12px; }
-  .header p { display: none; }
+  .header > p { display: none; }
+  .header .summary .lead { font-size: 13px; }
   .header .row { margin-top: 6px; }
   .panel { top: auto; right: 0; left: 0; bottom: 0; width: auto; max-height: 46vh; border-radius: var(--radius) var(--radius) 0 0; }
   .legend { bottom: calc(46vh + 10px); width: min(300px, calc(100vw - 24px)); }

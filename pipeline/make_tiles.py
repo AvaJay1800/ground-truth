@@ -171,6 +171,12 @@ def main(argv: list[str]) -> int:
     vrts = {k: WarpedVRT(v, **vrt_opts) for k, v in srcs.items()}
     water_src = rasterio.open(DERIVED / "water_mask.tif")
     water_vrt = WarpedVRT(water_src, crs="EPSG:3857", resampling=Resampling.nearest, src_nodata=255, nodata=255, **grid)
+    # Coarse USGS 3DEP grid, used only where neither lidar survey has data (see fetch_fallback_dem.py).
+    fallback_path = ROOT / "data" / "raw" / "usgs" / "3dep_fallback_10m.tif"
+    fallback_src = rasterio.open(fallback_path) if fallback_path.exists() else None
+    fallback_vrt = WarpedVRT(fallback_src, **vrt_opts) if fallback_src else None
+    if not fallback_vrt:
+        print("no fallback DEM; terrain outside the surveys will sit at sea level (run fetch_fallback_dem.py)")
 
     counts = {"before": 0, "after": 0, "change": 0}
     for z in range(MIN_ZOOM, args.max_zoom + 1):
@@ -179,12 +185,15 @@ def main(argv: list[str]) -> int:
             before = read_tile(vrts["before"], t)
             after = read_tile(vrts["after"], t)
             diff = read_tile(vrts["diff"], t)
-            if not (np.isfinite(before).any() or np.isfinite(diff).any()):
-                continue
-            after_filled = np.where(np.isnan(after), before, after)
-            # Terrain tiles can't be transparent; outside the data, fall back to sea level so
-            # the tile still decodes. These cells are outside the study area anyway.
-            for name, elev in (("before", before), ("after", after_filled)):
+            # Every candidate tile is written, even where only the fallback has data, so the
+            # browser never asks for a tile inside the advertised bounds and gets a 404.
+            # Terrain tiles can't be transparent. Where a survey has no data: the 2014 surface
+            # borrows the 2013 one, and both borrow the coarse USGS grid. Both cases are outside
+            # the slide; the fallback is the last resort instead of a sea-level cliff.
+            fallback = read_tile(fallback_vrt, t) if fallback_vrt else np.zeros_like(before)
+            before_filled = np.where(np.isnan(before), fallback, before)
+            after_filled = np.where(np.isnan(after), before_filled, after)
+            for name, elev in (("before", before_filled), ("after", after_filled)):
                 img = terrain_rgb(np.nan_to_num(elev, nan=0.0))
                 out = TILES / name / str(z) / str(t.x) / f"{t.y}.png"
                 out.parent.mkdir(parents=True, exist_ok=True)
@@ -214,10 +223,12 @@ def main(argv: list[str]) -> int:
         },
     }
     (DERIVED / "legend.json").write_text(json.dumps(legend, indent=2))
-    for v in list(vrts.values()) + [water_vrt]:
-        v.close()
-    for s_ in list(srcs.values()) + [water_src]:
-        s_.close()
+    for v in list(vrts.values()) + [water_vrt, fallback_vrt]:
+        if v is not None:
+            v.close()
+    for s_ in list(srcs.values()) + [water_src, fallback_src]:
+        if s_ is not None:
+            s_.close()
     print("tiles written:", counts)
     return 0
 

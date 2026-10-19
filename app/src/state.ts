@@ -2,7 +2,8 @@ import { signal, computed } from '@preact/signals';
 import type { UnitSystem } from './math/units';
 import type { VolumeResult } from './math/volume';
 
-export type ViewMode = 'compare' | 'change';
+export type ViewMode = 'compare' | 'change' | '3d';
+export type Epoch = 'before' | 'after';
 export type Panel = 'measure' | 'about' | null;
 
 export interface Summary {
@@ -54,6 +55,11 @@ export const mode = signal<ViewMode>('compare');
 export const panel = signal<Panel>('measure');
 export const swipe = signal(0.5);           // fraction of width showing "before"
 export const imagery = signal(false);
+// 3D view settings: which surface the terrain is built from, whether the change
+// colors are draped on it, and how much the heights are stretched.
+export const epoch3d = signal<Epoch>('after');
+export const drape3d = signal(true);
+export const exaggeration = signal(1.3);
 export const summary = signal<Summary | null>(null);
 export const legend = signal<Legend | null>(null);
 export const readout = signal<Readout | null>(null);

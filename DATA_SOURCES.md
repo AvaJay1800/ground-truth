@@ -32,6 +32,10 @@ Lake: the debris dammed the North Fork Stillaguamish. The pipeline finds the pon
 | Stillaguamish 2014 | April 2 to 9, 2014 | Whole-river final acquisition for WSDOT, 36,932 acres. | DTM 38, metadata 236 |
 | USGS 3DEP WA Western North 2016 | March 17, 2016 to June 6, 2017 | 1 m bare-earth DEM, UTM 10N meters, NAVD88 GEOID03. NVA 0.081 m at 95 percent. Shows the valley after cleanup and the rebuilt SR 530. | The National Map, tile x58y535 |
 
+## Fallback terrain for the 3D view only
+
+Neither lidar footprint fills the study box, and a terrain tile cannot be transparent. `pipeline/fetch_fallback_dem.py` pulls a 10 m grid from the USGS 3DEP image service (The National Map, public domain, current data: at Oso that is the 2016 post-cleanup lidar) and `make_tiles.py` uses it only where neither survey has data. It never enters a difference or a volume. The 2014 terrain additionally borrows the 2013 surface where the March 24 flight has no data; both cases are outside the slide.
+
 ## Where the files come from
 
 - Washington Lidar Portal, Washington State Department of Natural Resources: https://lidarportal.dnr.wa.gov. The portal's own page script calls three endpoints (`/project`, `/query`, `/download`); `pipeline/fetch_data.py` uses the same ones with a study-area polygon so only the tiles around the slide are pulled.
