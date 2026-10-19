@@ -3,7 +3,9 @@
 // the right and carries the change layer and the drawing tools.
 import { Map as MLMap, NavigationControl, ScaleControl, type StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import type { FeatureCollection } from 'geojson';
 import { BASEMAP_STYLE, DATA, IMAGERY_ATTRIBUTION, IMAGERY_TILES, INITIAL_VIEW } from '../config';
+import type { HaulData } from '../state';
 
 export type Epoch = 'before' | 'after';
 
@@ -15,6 +17,10 @@ export interface MapPair {
   setImagery(v: boolean): void;
   /** Turn 3D terrain on the "after" map on or off, built from the given survey. */
   setTerrain(epoch: Epoch | null, exaggeration: number): void;
+  /** Add (once) the what-if cleanup corridor, haul routes and sites; then show or hide them. */
+  setHaul(data: HaulData | null, visible: boolean): void;
+  /** Frame the corridor, both pits and the roads between them. */
+  fitHaul(data: HaulData, padding?: { top: number; right: number; bottom: number; left: number }): void;
   destroy(): void;
 }
 
@@ -77,8 +83,58 @@ export function createMapPair(beforeEl: HTMLElement, afterEl: HTMLElement, bound
       after.setLayoutProperty('hillshade', 'visibility', epoch === 'after' ? 'visible' : 'none');
       after.setLayoutProperty('hillshade-before', 'visibility', epoch === 'before' ? 'visible' : 'none');
     },
+    setHaul(data, visible) {
+      // isStyleLoaded() flips false during any pending style change, so it is not a safe gate here;
+      // the terrain source existing means the style has loaded and the epoch layers are in.
+      // Both maps carry the haul layers so the routes show on either side of the swipe handle.
+      for (const m of [before, after]) {
+        if (!data || !m.getSource('dem')) continue;
+        if (!m.getSource('haul-corridor')) addHaulLayers(m, data);
+        for (const id of HAUL_LAYERS) m.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+      }
+    },
+    fitHaul(data, padding = { top: 80, right: 420, bottom: 60, left: 40 }) {
+      let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+      const take = ([x, y]: number[]) => { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); };
+      for (const k of ['disposal', 'borrow'] as const) data.routes[k].out.geometry.coordinates.forEach(take);
+      data.sites.forEach((site) => take([site.lon, site.lat]));
+      if (!Number.isFinite(w)) return;
+      after.fitBounds([[w, s], [e, n]], { padding, pitch: 0, bearing: 0, duration: 900 });
+    },
     destroy() { before.remove(); after.remove(); },
   };
+}
+
+const HAUL_LAYERS = ['haul-corridor-fill', 'haul-corridor-line', 'haul-route-disposal', 'haul-route-borrow', 'haul-sites', 'haul-site-labels'];
+
+function addHaulLayers(map: MLMap, h: HaulData): void {
+  map.addSource('haul-corridor', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: h.corridor.geometry } });
+  const routes: FeatureCollection = {
+    type: 'FeatureCollection',
+    features: (['disposal', 'borrow'] as const).map((k) => ({
+      type: 'Feature', properties: { role: k }, geometry: h.routes[k].out.geometry,
+    })),
+  };
+  map.addSource('haul-routes', { type: 'geojson', data: routes });
+  const sites: FeatureCollection = {
+    type: 'FeatureCollection',
+    features: [
+      ...h.sites.map((s) => ({ type: 'Feature' as const, properties: { role: s.role, label: s.role === 'disposal' ? 'Disposal (what-if)' : 'Borrow (what-if)' }, geometry: { type: 'Point' as const, coordinates: [s.lon, s.lat] } })),
+      { type: 'Feature', properties: { role: 'origin', label: 'Cleanup scope' }, geometry: { type: 'Point', coordinates: h.origin_lonlat } },
+    ],
+  };
+  map.addSource('haul-sites', { type: 'geojson', data: sites });
+  const before = firstSymbolLayer(map);
+  map.addLayer({ id: 'haul-corridor-fill', type: 'fill', source: 'haul-corridor', layout: { visibility: 'none' }, paint: { 'fill-color': '#1c1f24', 'fill-opacity': 0.12 } }, before);
+  map.addLayer({ id: 'haul-corridor-line', type: 'line', source: 'haul-corridor', layout: { visibility: 'none' }, paint: { 'line-color': '#1c1f24', 'line-width': 2, 'line-dasharray': [2, 1.5] } }, before);
+  map.addLayer({ id: 'haul-route-disposal', type: 'line', source: 'haul-routes', filter: ['==', ['get', 'role'], 'disposal'], layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1c1f24', 'line-width': 4, 'line-opacity': 0.85 } }, before);
+  map.addLayer({ id: 'haul-route-borrow', type: 'line', source: 'haul-routes', filter: ['==', ['get', 'role'], 'borrow'], layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1c1f24', 'line-width': 4, 'line-opacity': 0.85, 'line-dasharray': [1, 2] } }, before);
+  map.addLayer({ id: 'haul-sites', type: 'circle', source: 'haul-sites', layout: { visibility: 'none' }, paint: { 'circle-radius': 7, 'circle-color': '#fcfbf9', 'circle-stroke-color': '#1c1f24', 'circle-stroke-width': 2.5 } });
+  map.addLayer({
+    id: 'haul-site-labels', type: 'symbol', source: 'haul-sites',
+    layout: { visibility: 'none', 'text-field': ['get', 'label'], 'text-size': 12, 'text-offset': [0, 1.3], 'text-anchor': 'top', 'text-font': ['Noto Sans Bold'] },
+    paint: { 'text-color': '#1c1f24', 'text-halo-color': '#fcfbf9', 'text-halo-width': 1.5 },
+  });
 }
 
 function baseMap(container: HTMLElement): MLMap {

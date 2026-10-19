@@ -4,7 +4,7 @@ Seeing the invisible change. A web demo that compares two bare-earth elevation s
 
 Forty-three people died at Oso. The demo is about understanding the land, and it is built to be respectful and factual. See `DATA_SOURCES.md` for where every number comes from.
 
-Status: Phase 2 (change viewer with swipe, change map, volume tool, cursor readout, About panel, 3D terrain and the plain-English summary). Remaining phases are listed in `BUILD_LOG.md`.
+Status: Phase 3 (change viewer, 3D, summary, and the what-if cleanup planner: balance, swell and shrink, trucks, routes, cycle time). Remaining phases are listed in `BUILD_LOG.md`.
 
 ## Layout
 
@@ -28,6 +28,7 @@ python -m venv .venv
 .venv/Scripts/python pipeline/align_and_diff.py      # steps 2-5: one grid, meters, difference, LoD, lake, COGs, summary.json
 .venv/Scripts/python pipeline/fetch_fallback_dem.py  # 10 m USGS grid for terrain edges outside both surveys (3D only)
 .venv/Scripts/python pipeline/make_tiles.py          # step 6: terrain-RGB and change tiles, legend.json
+.venv/Scripts/python pipeline/haul_prep.py           # what-if cleanup: corridor volumes, pits, routes (calls OSRM once)
 .venv/Scripts/python -m pytest pipeline/tests        # math tests
 ```
 

@@ -20,6 +20,7 @@ describe('units', () => {
   it('formats volumes grouped by thousands', () => {
     expect(formatVolume(4950000, 'us')).toEqual({ value: '6,474,356', unit: 'yd³' });
     expect(formatVolume(4950000, 'metric')).toEqual({ value: '4,950,000', unit: 'm³' });
+    expect(formatVolume(0, 'us').value).toBe('0');
   });
   it('formats lengths with sensible precision', () => {
     expect(formatLength(0.162, 'us')).toEqual({ value: '0.5', unit: 'ft' });

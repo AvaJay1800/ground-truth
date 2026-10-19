@@ -9,6 +9,7 @@ export const DATA = {
   after: `${DATA_BASE}/after_m.tif`,
   diff: `${DATA_BASE}/diff_m.tif`,
   water: `${DATA_BASE}/water_mask.tif`,
+  haul: `${DATA_BASE}/haul.json`,
   tiles: (set: 'before' | 'after' | 'change') => `${DATA_BASE}/tiles/${set}/{z}/{x}/{y}.png`,
 };
 

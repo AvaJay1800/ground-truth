@@ -4,7 +4,8 @@ import type { Map as MLMap, MapMouseEvent } from 'maplibre-gl';
 import { createMapPair, type MapPair } from './map/createMap';
 import { createMeasure, type Measure } from './map/measure';
 import { loadSite, sampleAt } from './data/site';
-import { drape3d, epoch3d, error, exaggeration, imagery, mode, panel, readout, summary, swipe } from './state';
+import { drape3d, epoch3d, error, exaggeration, haul, imagery, mode, panel, readout, summary, swipe } from './state';
+import { HaulPanel } from './ui/HaulPanel';
 import { Header } from './ui/Header';
 import { Legend } from './ui/Legend';
 import { Readout } from './ui/Readout';
@@ -36,6 +37,13 @@ export function App() {
         if (m === 'compare') { if (swipe.value === 0) swipe.value = 0.5; } else { swipe.value = 0; }
       }));
       disposers.push(effect(() => p.setImagery(imagery.value)));
+      disposers.push(effect(() => p.setHaul(haul.value, panel.value === 'haul')));
+      // Opening the cleanup tab frames the whole haul: corridor, both pits, the roads between.
+      let framed = false;
+      disposers.push(effect(() => {
+        if (panel.value === 'haul' && haul.value && !framed) { framed = true; p.fitHaul(haul.value); }
+        if (panel.value !== 'haul') framed = false;
+      }));
       // 3D: terrain from the chosen survey, a tilted camera on the way in, flat on the way out.
       let was3d = false;
       disposers.push(effect(() => {
@@ -100,12 +108,13 @@ export function App() {
       <aside class="card panel" aria-label="Details">
         <div class="tabs" role="tablist">
           <button type="button" role="tab" aria-selected={panel.value === 'measure'} onClick={() => (panel.value = 'measure')}>Measure</button>
+          <button type="button" role="tab" aria-selected={panel.value === 'haul'} onClick={() => (panel.value = 'haul')}>Plan a cleanup</button>
           <button type="button" role="tab" aria-selected={panel.value === 'about'} onClick={() => (panel.value = 'about')}>About this data</button>
         </div>
         <div class="panel-body" role="tabpanel">
-          {panel.value === 'measure'
-            ? <MeasurePanel onDraw={() => { mode.value = 'change'; measure.current?.start(); }} onClear={() => measure.current?.clear()} />
-            : <AboutPanel />}
+          {panel.value === 'measure' && <MeasurePanel onDraw={() => { mode.value = 'change'; measure.current?.start(); }} onClear={() => measure.current?.clear()} />}
+          {panel.value === 'haul' && <HaulPanel />}
+          {panel.value === 'about' && <AboutPanel />}
         </div>
       </aside>
 

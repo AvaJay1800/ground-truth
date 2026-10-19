@@ -1,10 +1,30 @@
 import { signal, computed } from '@preact/signals';
+import type { Geometry } from 'geojson';
 import type { UnitSystem } from './math/units';
 import type { VolumeResult } from './math/volume';
 
 export type ViewMode = 'compare' | 'change' | '3d';
 export type Epoch = 'before' | 'after';
-export type Panel = 'measure' | 'about' | null;
+export type Panel = 'measure' | 'haul' | 'about' | null;
+
+export interface HaulRoute { distance_m: number; duration_s: number; geometry: { type: 'LineString'; coordinates: number[][] } }
+export interface HaulSite {
+  id: 'disposal' | 'borrow'; role: 'disposal' | 'borrow'; name: string; lon: number; lat: number;
+  permit: number; applicant: string; commodity: string; permit_acres: number; why: string;
+}
+export interface HaulData {
+  generated: string;
+  framing: string;
+  origin_lonlat: [number, number];
+  corridor: {
+    geometry: Geometry; half_width_m: number; source: string;
+    volumes: Totals & { corridor_area_m2: number; water_cells: number; cell_area_m2: number };
+  };
+  sites: HaulSite[];
+  sites_source: { name: string; url: string; fetched: string };
+  routes: Record<'disposal' | 'borrow', { out: HaulRoute; back: HaulRoute; round_trip_km: number; round_trip_min_car: number }>;
+  routing: { engine: string; url: string; fetched: string; note: string };
+}
 
 export interface Summary {
   generated: string;
@@ -69,3 +89,19 @@ export const volumeBusy = signal(false);
 export const error = signal<string | null>(null);
 
 export const lod = computed(() => summary.value?.lod.lod_m ?? 0.1);
+
+// Phase 3: the what-if cleanup. Data from haul.json plus the user's choices.
+export const haul = signal<HaulData | null>(null);
+export const haulScope = signal<'corridor' | 'drawn'>('corridor');
+export const soilId = signal('earth_wet');
+export const swellOverride = signal<number | null>(null);
+export const shrinkOverride = signal<number | null>(null);
+export const truckId = signal('adt');
+export const capacityOverride = signal<number | null>(null);
+export const payloadOverride = signal<number | null>(null);
+export const nTrucks = signal(8);
+export const hoursPerDay = signal(10);
+export const loadMin = signal(5);
+export const dumpMin = signal(2);
+export const speedFactor = signal(0.8);
+export const efficiency = signal(0.83);

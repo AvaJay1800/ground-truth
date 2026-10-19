@@ -36,6 +36,23 @@ Lake: the debris dammed the North Fork Stillaguamish. The pipeline finds the pon
 
 Neither lidar footprint fills the study box, and a terrain tile cannot be transparent. `pipeline/fetch_fallback_dem.py` pulls a 10 m grid from the USGS 3DEP image service (The National Map, public domain, current data: at Oso that is the 2016 post-cleanup lidar) and `make_tiles.py` uses it only where neither survey has data. It never enters a difference or a volume. The 2014 terrain additionally borrows the 2013 surface where the March 24 flight has no data; both cases are outside the slide.
 
+## What-if cleanup (Phase 3)
+
+Nothing in this section describes what happened in 2014. It is the scope, the sites and the roads for a teaching scenario.
+
+| Item | Source | Notes |
+|---|---|---|
+| SR 530 centerline | OpenStreetMap ways tagged `ref=SR 530`, via the Overpass API, fetched 2026-10-19 | Current alignment; the rebuilt highway follows the pre-slide corridor closely. Buffered 30 m each side. |
+| Corridor volumes | Phase 1 difference grid, bank measure, above the level of detection, lake excluded | 151,109 m³ of debris on the corridor, 6,369 m³ of ground lost, 35.4 ha |
+| Disposal site (what-if) | Washington DNR Active Surface Mine Permit Sites, permit 13154, "PS-D-170 (Boulder Creek)", WSDOT, sand and gravel | Nearest permitted pit east of the slide and owned by the highway agency. No record it was used this way. |
+| Borrow site (what-if) | Same register, permit 12814, "Oso Gravel", Green Crow Corp., sand and gravel, 400 acres | Nearest permitted commercial pit west of the slide. |
+| Routes | OSRM demo server (router.project-osrm.org), car profile, OpenStreetMap roads, fetched once on 2026-10-19 by `pipeline/haul_prep.py` | 11.5 km / 15 min to disposal, 10.5 km / 17 min to borrow, each way. The app never calls OSRM. |
+| Swell | Caterpillar, "Material Density Tables to Help Estimate Earthwork Volumes" (cat.com): loose and bank densities per material; swell = bank ÷ loose | Earth, wet excavated: 2020 / 1600 = 1.26 |
+| Shrink | Assumed defaults (0.85 clay, 0.90 mixed earth, 0.95 sand and gravel), editable | Not in the Caterpillar table; marked as assumptions in the panel |
+| Cat 745 | cat.com en_US product page: rated payload 41 t, heaped capacity SAE 2:1 26 m³ | |
+| Highway dump body | Ox Bodies Stampede product page: 14 to 21 ft bodies, 13.6 to 28.9 yd³ | A 16 ft body with 54 in sides taken as 16 yd³; payload 16 t assumed under Washington axle limits (RCW 46.44) |
+| Cycle defaults | Assumptions: 5 min load (2.5 for the highway truck), 2 min dump, 0.8 loaded speed factor, 10 h days, 0.83 efficiency | All editable in the panel |
+
 ## Where the files come from
 
 - Washington Lidar Portal, Washington State Department of Natural Resources: https://lidarportal.dnr.wa.gov. The portal's own page script calls three endpoints (`/project`, `/query`, `/download`); `pipeline/fetch_data.py` uses the same ones with a study-area polygon so only the tiles around the slide are pulled.

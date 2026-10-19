@@ -2,6 +2,38 @@
 
 Dated notes on what was built, what went wrong, what I learned, and one clip-worthy moment per phase.
 
+## 2026-10-19 — Phase 3: earthwork logistics (mass haul)
+
+**Built**
+
+- `pipeline/haul_prep.py`: the what-if scope (SR 530, 30 m either side of the OpenStreetMap centerline, through the slide), its bank volumes from the Phase 1 difference grid, two candidate sites from Washington DNR's public register of permitted pits, and four road routes fetched once from the public OSRM demo server and stored in `haul.json`. The live app never calls OSRM.
+- `app/src/math/haul.ts`: balance (reuse first, surplus to disposal, deficit from borrow, with compaction applied), swell and shrink, payload-or-volume truck loads, cycle time, loader-saturation fleet size, and a day planner that is honest about whether the loader or the fleet is the bottleneck. Ten vitest cases.
+- "Plan a cleanup" tab: six numbered steps, every factor shown and editable, every default with its source line underneath. Corridor, routes and pits drawn on the map; opening the tab frames them.
+- `app/src/content/haulDefaults.ts`: Caterpillar's loose and bank densities (so swell is a ratio of two cited numbers), Cat 745 payload and heaped capacity from cat.com, an Ox Bodies Stampede 16 ft body for the highway truck. Shrink factors, payload for the highway truck, load and dump times, the speed factor and the 50-minute hour are labeled as assumptions.
+
+**Problems hit**
+
+- cat.com refuses plain HTTP clients; the density table was read through the browser pane and transcribed. Ox Bodies publishes a capacity range per body line, not a per-length table on the page, so the 16 ft figure is stated as an interpretation of that range.
+- Shrink (compacted ÷ bank) is not in the Caterpillar table. Rather than cite a number I could not verify, the defaults are marked "assumed" in the UI and here. An Iowa DOT shrinkage report from 1969 exists but its scan did not yield a clean figure.
+- MapLibre's `isStyleLoaded()` is false during any pending style change, which silently skipped adding the haul layers. The gate is now "does the terrain source exist."
+- Zero volumes printed as "0.0" in the balance; fixed in the formatter with a test.
+
+**Learned**
+
+- Balance first, then trucks. Reusing debris to restore lost ground is tiny here (about 9,000 yd³ of 198,000) because a landslide deposit is almost all surplus; a highway cut-and-fill job is the opposite.
+- Loaded trucks are limited by weight before volume for wet earth in a Cat 745: 41 t at 1.6 t/m³ is 25.6 m³, just under the 26 m³ body. The panel says which limit bit.
+- Every pace number has a loader behind it. With eight trucks the fleet is the limit; past nine, trucks queue and the only way to go faster is a second loader.
+
+**Clip-worthy moment**
+
+The corridor holds about 198,000 cubic yards of debris. In a Cat 745 that is 7,100 truckloads, each a 41-minute round trip to the nearest permitted pit. Eight trucks, ten-hour days: 73 working days. Twenty trucks: 30 days. The numbers are a what-if, but every input is on screen with its source, and you can change any of them.
+
+**Assumed**
+
+- The scope is a 100 ft corridor cleared back to the 2013 grade. The real reconstruction raised the highway on the debris instead; this is a teaching scenario and the panel says so.
+- Site choice: nearest permitted pits east and west of the slide. Neither is known to have been used in 2014.
+- Routes are car routes on today's roads; trucks are slowed by a 0.8 factor (0.9 for highway trucks). Empty return at car speed.
+
 ## 2026-10-19 — Phase 2: 3D and the plain-English summary
 
 **Built**

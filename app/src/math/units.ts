@@ -47,11 +47,20 @@ export function humanVolume(m3: number, system: UnitSystem): string {
   return `${Math.round(v)} ${unit}`;
 }
 
+export const MILE_M = 1609.344;
+
+/** Distance for display: miles or kilometers. */
+export function formatDistance(m: number, system: UnitSystem): Formatted {
+  const v = system === 'us' ? m / MILE_M : m / 1000;
+  return { value: fixed(v, 1), unit: system === 'us' ? 'mi' : 'km' };
+}
+
 export function fixed(v: number, digits: number): string {
   return v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 export function grouped(v: number): string {
+  if (v === 0) return '0';
   const abs = Math.abs(v);
   const digits = abs < 10 ? 1 : 0;
   return Math.round(v * 10 ** digits) === 0 && abs > 0

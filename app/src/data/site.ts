@@ -1,6 +1,6 @@
 // Loads the pipeline's JSON and opens the rasters once; everything else asks here.
 import { DATA } from '../config';
-import { legend, summary, error } from '../state';
+import { haul, legend, summary, error } from '../state';
 import { openCog, pointValue, readWindow, type Cog } from './cog';
 import { lonLatToUtm } from '../math/utm';
 import type { Grid } from '../math/volume';
@@ -15,6 +15,8 @@ export async function loadSite(): Promise<void> {
     ]);
     summary.value = s;
     legend.value = l;
+    // The cleanup what-if is optional: the viewer works without it.
+    try { haul.value = await fetch(DATA.haul).then((r) => (r.ok ? r.json() : null)); } catch { haul.value = null; }
   } catch (e) {
     error.value = `Could not load the site data (${(e as Error).message}). Run the pipeline first.`;
   }
