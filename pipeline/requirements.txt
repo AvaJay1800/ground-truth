@@ -1,0 +1,13 @@
+# Geospatial pipeline for Ground Truth. Install into a venv:
+#   python -m venv .venv && .venv/Scripts/python -m pip install -r pipeline/requirements.txt
+# rasterio wheels bundle GDAL and PROJ on Windows, so no system GDAL is needed.
+rasterio>=1.4
+numpy>=2.0
+pyproj>=3.6
+shapely>=2.0
+mercantile>=1.2
+pillow>=10
+requests>=2.31
+pypdf>=4
+laspy[lazrs]>=2.5
+pytest>=8

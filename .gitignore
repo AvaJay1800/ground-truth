@@ -1,0 +1,27 @@
+# Raw downloads and derived rasters never go in git (see DATA_SOURCES.md to re-fetch)
+data/raw/
+data/derived/
+*.tif
+*.tiff
+*.laz
+*.las
+*.zip
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+app/dist/
+app/dist-ssr/
+*.local
+
+# Tooling and OS
+.claude/
+.DS_Store
+Thumbs.db
+*.log
+.wrangler/
