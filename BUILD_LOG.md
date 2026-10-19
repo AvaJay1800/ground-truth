@@ -2,6 +2,39 @@
 
 Dated notes on what was built, what went wrong, what I learned, and one clip-worthy moment per phase.
 
+## 2026-10-19 — Phase 1: core change viewer
+
+**Built**
+
+- `pipeline/align_and_diff.py`: both DEMs warped onto one 1 m grid in UTM 10N, feet to meters with the US survey foot, clipped to the study area and the 2014 footprint, differenced, checked against each other on stable ground, lake detected and masked, written as cloud-optimized GeoTIFFs plus `summary.json`. Runs in about 45 seconds.
+- `pipeline/lod.py`: level of detection, volume totals and lake detection as plain functions with nine pytest cases.
+- `pipeline/make_tiles.py`: terrain-RGB tiles for both epochs, classed change tiles with hatched water, `legend.json` so the app's legend reads the same breaks the tiles were painted with. 683 PNGs, 15 MB.
+- App: two synced MapLibre maps with a swipe; hillshade from the terrain tiles; change layer; polygon volume tool (Terra Draw plus geotiff.js reading the difference COG and the water mask by HTTP range); cursor readout of lat/long, both elevations and the change; About panel; light and dark; units toggle. Eighteen vitest cases for units, UTM and polygon volume.
+
+**Problems hit**
+
+- Net change came out +3.2 million m³ on the first run. A landslide should roughly balance. The map showed why: the river backed up behind the debris and lidar read the new lake surface as several meters of "gain" over 150 ha. The pipeline now finds the pond as the one elevation a large flat area of gain shares, masks it, hatches it on the map and reports water separately. Earth totals then balance within 10 percent.
+- The lake mask first shrank to 67 ha because per-cell noise makes flat water look like it tilts a degree. Slope is now measured on a 5 m block average.
+- Stable ground disagreed by 8 cm NMAD, more than the vendors' 5 cm. So the level of detection is 16 cm, not the 7.6 cm the reports imply. Using the measured figure is the honest choice and the About panel says so.
+- Vite pre-bundling broke MapLibre's web worker (excluded from optimizeDeps); MapLibre's own CSS sets `position: relative` on the map container, which zeroed the map height until the rule was made more specific; Vite's SPA fallback was answering missing tiles with index.html, which MapLibre tried to decode as PNGs.
+- The desktop app's preview launcher kept starting the old portfolio dev server instead of this project's launch config, so the Vite server was started directly for verification.
+
+**Learned**
+
+- "Change" on a difference map is not all earth. Water, snow and vegetation classification differences all show up as elevation change. A pipeline has to say what it counted.
+- A measured level of detection beats a quoted one. Stable ground is the control group.
+- Terrain-RGB cannot be transparent, so missing after-survey cells at the edges are filled with the 2013 surface; this is outside the slide and is documented.
+
+**Clip-worthy moment**
+
+The first difference map had a bright orange tongue stretching two kilometers east of the slide. It looked like debris. It was the lake: the river had been dammed for two days when the plane flew, and the water surface, flat at 89.3 m, read as 2.8 m of "fill" across 133 hectares. One histogram spike found it. That is the whole point of looking at the map before trusting the number.
+
+**Assumed**
+
+- Basemaps: OpenFreeMap Positron (vector, no key) and USGS National Map imagery (public domain, no key). Both are free for this use; confirm you are happy with them.
+- Lake detection rules: flat means under 0.3 degrees on a 5 m block average; the pool is the modal elevation in 0.2 m bins; mask within 0.4 m of it and under 1 degree.
+- Volume uncertainty is the level of detection summed linearly over counted cells, the cautious convention.
+
 ## 2026-10-19 — Phase 0: data, environment, scaffold
 
 **Built**

@@ -4,7 +4,7 @@ Seeing the invisible change. A web demo that compares two bare-earth elevation s
 
 Forty-three people died at Oso. The demo is about understanding the land, and it is built to be respectful and factual. See `DATA_SOURCES.md` for where every number comes from.
 
-Status: Phase 0 (data verified and downloaded, repo scaffolded). Phases 1 to 5 are listed in `BUILD_LOG.md`.
+Status: Phase 1 (core change viewer: swipe, change map, volume tool, cursor readout, About panel). Remaining phases are listed in `BUILD_LOG.md`.
 
 ## Layout
 
@@ -23,12 +23,14 @@ Windows, Python 3.12. The rasterio wheel bundles GDAL, so nothing else to instal
 ```bash
 python -m venv .venv
 .venv/Scripts/python -m pip install -r pipeline/requirements.txt
-.venv/Scripts/python pipeline/fetch_data.py --list
-.venv/Scripts/python pipeline/fetch_data.py
-.venv/Scripts/python pipeline/inspect_dems.py
+.venv/Scripts/python pipeline/fetch_data.py          # ~850 MB of DTM tiles from the Washington Lidar Portal
+.venv/Scripts/python pipeline/inspect_dems.py        # step 1: CRS, units, resolution, nodata
+.venv/Scripts/python pipeline/align_and_diff.py      # steps 2-5: one grid, meters, difference, LoD, lake, COGs, summary.json
+.venv/Scripts/python pipeline/make_tiles.py          # step 6: terrain-RGB and change tiles, legend.json
+.venv/Scripts/python -m pytest pipeline/tests        # math tests
 ```
 
-`fetch_data.py` pulls about 850 MB of DTM tiles for the study area from the Washington Lidar Portal. Later steps (align, difference, tiles) arrive in Phase 1.
+Outputs land in `data/derived/`: three cloud-optimized GeoTIFFs in meters (before, after, difference), a water mask, `summary.json`, `legend.json` and about 700 PNG tiles.
 
 ## Run the app
 
@@ -37,6 +39,8 @@ cd app
 npm install
 npm run dev
 ```
+
+In development the Vite config serves `../data/derived` at `/data` with HTTP range support, so the browser reads the GeoTIFFs in pieces. Tests: `npx vitest run`.
 
 ## Deploy
 

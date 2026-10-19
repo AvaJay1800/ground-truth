@@ -19,7 +19,9 @@ Verified 2026-10-19.
 | Point density target | 8 pulses per square meter | 8 pulses per square meter |
 | Portal dataset ids | DTM 43, metadata 241, point cloud 292 | DTM 32, point cloud 281 (no metadata file on the portal) |
 
-Level of detection used by the app: sqrt(0.054^2 + 0.054^2) = 0.076 m (0.25 ft) at 95 percent confidence, before any adjustment for the datum differences listed under Limitations.
+Level of detection: the stated accuracies combined in quadrature give sqrt(0.054^2 + 0.054^2) = 0.076 m. The pipeline also measures the real disagreement between the two surfaces on 1.1 million cells of flat ground away from the slide: a median bias of +0.030 m (removed) and a robust spread (NMAD) of 0.083 m. 1.96 times that spread is 0.162 m, larger than the stated figure, so **0.162 m (0.53 ft) is the level of detection the app uses**. The extra noise comes mostly from forest floor classification and the portal's resampling, not from the instruments.
+
+Lake: the debris dammed the North Fork Stillaguamish. The pipeline finds the pond as the one elevation (89.3 m NAVD88) that a large flat area of "gain" shares, masks it (133 ha), and reports its rise (3.7 million m³ of water) separately from earth volumes. Earth totals for the study area, above the level of detection: cut 5.00 million m³, fill 4.58 million m³, net -0.42 million m³. The shortfall is plausible: deposit hidden under the lake, bulking and compaction differences, and material carried off by the river between March 22 and 24.
 
 ## Other epochs on the portal, kept for later
 
