@@ -5,10 +5,12 @@ import type { TerraDraw } from 'terra-draw';
 import { diffWindow } from '../data/site';
 import { lonLatToUtm } from '../math/utm';
 import { polygonVolume, type Ring } from '../math/volume';
-import { drawing, lod, volume, volumeBusy, error } from '../state';
+import { drawVertices, drawing, lod, panel, panelOpen, volume, volumeBusy, error } from '../state';
 
 export interface Measure {
   start(): void;
+  /** Stop drawing and drop any unfinished shape; a finished result stays. */
+  cancel(): void;
   clear(): void;
   destroy(): void;
 }
@@ -33,14 +35,28 @@ export async function createMeasure(map: MLMap): Promise<Measure> {
   });
   draw.start();
   draw.setMode('select');
+  if (import.meta.env.DEV) (window as unknown as { __td: TerraDraw }).__td = draw;
+
+  // Count the corners placed so far so the pointer hint can say what to do next.
+  draw.on('change', () => {
+    if (!drawing.value) return;
+    const f = draw.getSnapshot().find((x) => x.geometry.type === 'Polygon');
+    if (!f || f.geometry.type !== 'Polygon') { drawVertices.value = 0; return; }
+    const ring = f.geometry.coordinates[0].slice(0, -1);
+    const distinct = new Set(ring.map((c) => c.join(','))).size;
+    drawVertices.value = distinct;
+  });
 
   draw.on('finish', async (id, context) => {
     if (context.action !== 'draw') return;
     drawing.value = false;
+    drawVertices.value = 0;
     draw.setMode('select');
     const feature = draw.getSnapshotFeature(id);
     if (!feature || feature.geometry.type !== 'Polygon') return;
     const lonlat = feature.geometry.coordinates[0] as Array<[number, number]>;
+    panel.value = 'measure';
+    panelOpen.value = true;
     await measure(lonlat);
   });
 
@@ -49,12 +65,21 @@ export async function createMeasure(map: MLMap): Promise<Measure> {
       draw.clear();
       volume.value = null;
       drawing.value = true;
+      drawVertices.value = 0;
       draw.setMode('polygon');
+    },
+    cancel() {
+      if (!drawing.value) return;
+      draw.clear();
+      drawing.value = false;
+      drawVertices.value = 0;
+      draw.setMode('select');
     },
     clear() {
       draw.clear();
       volume.value = null;
       drawing.value = false;
+      drawVertices.value = 0;
       draw.setMode('select');
     },
     destroy() { draw.stop(); },

@@ -11,7 +11,8 @@ and the app labels it so. Five steps (20, 40, 60, 80, 100 percent) are cut as
 full terrain-RGB tile sets so MapLibre can swap the terrain source's tiles;
 the slider snaps to the nearest step.
 
-Output: data/derived/tiles/projection/<step>/z/x/y.png
+Output: data/derived/tiles/projection/<step>/z/x/y.png          terrain-RGB
+        data/derived/tiles/projection-change/<step>/z/x/y.png   classed change, same legend
 
 Usage:  python pipeline/make_projection_tiles.py [--max-zoom 16]
 """
@@ -26,14 +27,26 @@ import numpy as np
 import rasterio
 from PIL import Image
 from rasterio.enums import Resampling
+from pyproj import Transformer
 from rasterio.features import geometry_mask
 from rasterio.vrt import WarpedVRT
-from shapely.geometry import shape
 
 import make_tiles as mt
 from align_and_diff import TARGET_CRS, write_cog
 
 STEPS = [20, 40, 60, 80, 100]
+
+
+def project_geojson(geom: dict, tf: Transformer) -> dict:
+    """Project every coordinate of a Polygon or MultiPolygon GeoJSON geometry."""
+    def ring(coords):
+        xs, ys = tf.transform([c[0] for c in coords], [c[1] for c in coords])
+        return [[float(x), float(y)] for x, y in zip(xs, ys)]
+    if geom["type"] == "Polygon":
+        return {"type": "Polygon", "coordinates": [ring(r) for r in geom["coordinates"]]}
+    if geom["type"] == "MultiPolygon":
+        return {"type": "MultiPolygon", "coordinates": [[ring(r) for r in poly] for poly in geom["coordinates"]]}
+    raise ValueError(f"unsupported geometry {geom['type']}")
 
 
 def projected_surfaces() -> list[tuple[int, object]]:
@@ -42,12 +55,11 @@ def projected_surfaces() -> list[tuple[int, object]]:
         before = b.read(1, masked=True).filled(np.nan)
         after = a.read(1, masked=True).filled(np.nan)
         transform = a.transform
-        # The corridor is stored in lon/lat; project it onto the grid's CRS for the mask.
-        from pyproj import Transformer
+        # The corridor is stored in lon/lat; project its coordinates onto the grid's CRS for
+        # the mask. Plain GeoJSON in, plain GeoJSON out; no geometry library needed.
         to_utm = Transformer.from_crs("EPSG:4326", TARGET_CRS, always_xy=True)
-        from shapely import transform as shp_transform
-        corr = shp_transform(shape(haul["corridor"]["geometry"]), lambda c: np.column_stack(to_utm.transform(c[:, 0], c[:, 1])))
-        mask = geometry_mask([corr.__geo_interface__], out_shape=after.shape, transform=transform, invert=True)
+        corr = project_geojson(haul["corridor"]["geometry"], to_utm)
+        mask = geometry_mask([corr], out_shape=after.shape, transform=transform, invert=True)
     inside = mask & np.isfinite(before) & np.isfinite(after)
     outputs = []
     for step in STEPS:
@@ -73,6 +85,10 @@ def main(argv: list[str]) -> int:
 
     before_src = rasterio.open(mt.DERIVED / "before_m.tif")
     before_vrt = WarpedVRT(before_src, **vrt_opts)
+    water_src = rasterio.open(mt.DERIVED / "water_mask.tif")
+    water_vrt = WarpedVRT(water_src, crs="EPSG:3857", resampling=Resampling.nearest, src_nodata=255, nodata=255, **grid)
+    # The change map for each step uses the same classes as the real one, so the legend holds.
+    classes = mt.build_classes(summary["lod"]["lod_m"])
     fallback_path = mt.ROOT / "data" / "raw" / "usgs" / "3dep_fallback_10m.tif"
     fallback_src = rasterio.open(fallback_path) if fallback_path.exists() else None
     fallback_vrt = WarpedVRT(fallback_src, **vrt_opts) if fallback_src else None
@@ -91,13 +107,22 @@ def main(argv: list[str]) -> int:
                     out = mt.TILES / "projection" / str(step) / str(z) / str(t.x) / f"{t.y}.png"
                     out.parent.mkdir(parents=True, exist_ok=True)
                     Image.fromarray(img, "RGB").save(out, optimize=True)
+                    # Projected change: the projected surface minus 2013. Inside the corridor
+                    # that is (1 - f) times the real change, so the debris thins as f grows.
+                    diff = surf - before
+                    rgba = mt.classify(diff, classes)
+                    water = mt.read_tile(water_vrt, t, Resampling.nearest)
+                    rgba = mt.hatch_water(rgba, np.nan_to_num(water, nan=0) > 0.5)
+                    out2 = mt.TILES / "projection-change" / str(step) / str(z) / str(t.x) / f"{t.y}.png"
+                    out2.parent.mkdir(parents=True, exist_ok=True)
+                    Image.fromarray(rgba, "RGBA").save(out2, optimize=True)
                     count += 1
         print(f"step {step}%: tiles done")
     print(f"projection tiles written: {count}")
-    for v in (before_vrt, fallback_vrt):
+    for v in (before_vrt, fallback_vrt, water_vrt):
         if v is not None:
             v.close()
-    for s_ in (before_src, fallback_src):
+    for s_ in (before_src, fallback_src, water_src):
         if s_ is not None:
             s_.close()
     return 0

@@ -1,7 +1,7 @@
 // Two MapLibre maps, one per survey, kept in lockstep. The "before" map sits on top
 // and is clipped to the left of the swipe handle; the "after" map shows through on
 // the right and carries the change layer and the drawing tools.
-import { Map as MLMap, NavigationControl, ScaleControl, type RasterDEMTileSource, type StyleSpecification } from 'maplibre-gl';
+import { Map as MLMap, NavigationControl, ScaleControl, type RasterDEMTileSource, type RasterTileSource, type StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { FeatureCollection } from 'geojson';
 import { BASEMAP_STYLE, DATA, IMAGERY_ATTRIBUTION, IMAGERY_TILES, INITIAL_VIEW } from '../config';
@@ -19,8 +19,10 @@ export interface MapPair {
   setTerrain(epoch: Epoch | null, exaggeration: number): void;
   /** Add (once) the what-if cleanup corridor, haul routes and sites; then show or hide them. */
   setHaul(data: HaulData | null, visible: boolean): void;
-  /** Swap the 2014 terrain for a projected "percent cleared" step (null = the real 2014 surface). */
+  /** Swap the 2014 terrain and change map for a projected "percent cleared" step (null = measured). */
   setProjection(step: number | null): void;
+  /** Cursor over the map canvas, e.g. 'crosshair' while drawing. */
+  setCursor(cursor: string): void;
   /** Frame the corridor, both pits and the roads between them. */
   fitHaul(data: HaulData, padding?: { top: number; right: number; bottom: number; left: number }): void;
   destroy(): void;
@@ -96,12 +98,18 @@ export function createMapPair(beforeEl: HTMLElement, afterEl: HTMLElement, bound
       }
     },
     setProjection(step) {
-      // MapLibre lets a raster-dem source change its tile URLs in place; hillshade and 3D
-      // terrain both re-render from the new tiles. The before map is untouched.
-      const src = after.getSource('dem') as (RasterDEMTileSource | undefined);
-      if (!src) return;
-      const url = step ? DATA.projectionTiles(step) : DATA.tiles('after');
-      if (src.tiles?.[0] !== url) src.setTiles([url]);
+      // MapLibre lets a tile source change its URLs in place; hillshade, 3D terrain and the
+      // change layer all re-render from the new tiles. The before map is untouched.
+      const dem = after.getSource('dem') as (RasterDEMTileSource | undefined);
+      const change = after.getSource('change') as (RasterTileSource | undefined);
+      if (!dem || !change) return;
+      const demUrl = step ? DATA.projectionTiles(step) : DATA.tiles('after');
+      const changeUrl = step ? DATA.projectionChangeTiles(step) : DATA.tiles('change');
+      if (dem.tiles?.[0] !== demUrl) dem.setTiles([demUrl]);
+      if (change.tiles?.[0] !== changeUrl) change.setTiles([changeUrl]);
+    },
+    setCursor(cursor) {
+      after.getCanvas().style.cursor = cursor;
     },
     fitHaul(data, padding = { top: 80, right: 420, bottom: 60, left: 40 }) {
       let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;

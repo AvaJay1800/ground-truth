@@ -1,5 +1,5 @@
 import { SITE } from '../config';
-import { summary, units } from '../state';
+import { summary, units, welcome } from '../state';
 import { formatLength } from '../math/units';
 
 export function AboutPanel() {
@@ -70,6 +70,8 @@ export function AboutPanel() {
           <li>Basemap: OpenFreeMap (OpenStreetMap data). Aerial photo: USGS The National Map, current imagery, which shows the valley after the cleanup.</li>
         </ul>
       </details>
+
+      <p><button type="button" class="btn" onClick={() => (welcome.value = true)}>Show the welcome card again</button></p>
 
       <p class="memorial">
         On the morning of {SITE.eventDate}, the hillside above the Steelhead Haven neighborhood collapsed. Forty-three people died.

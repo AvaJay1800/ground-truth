@@ -134,3 +134,21 @@ export const freezingLoss = signal(1);
 export const snowLoss = signal(1);
 /** Timeline position as a fraction of the volume cleared, 0..1. */
 export const timeline = signal(0);
+export const playing = signal(false);
+
+// Onboarding. Preferences live in localStorage per device; reads and writes are guarded
+// because private windows and some embeds throw.
+function readPref(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+export function writePref(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+export const firstVisit = readPref('gt.visited') !== '1';
+/** Coach marks and tooltips on or off. On for a first visit. */
+export const help = signal(readPref('gt.help') === null ? true : readPref('gt.help') === '1');
+export const welcome = signal(firstVisit);
+/** Corners placed so far while drawing, for the pointer hint. */
+export const drawVertices = signal(0);
+/** Last pointer position over the map, viewport pixels, for the pointer hint. */
+export const pointer = signal<{ x: number; y: number } | null>(null);

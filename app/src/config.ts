@@ -13,6 +13,7 @@ export const DATA = {
   climate: `${DATA_BASE}/climate.json`,
   tiles: (set: 'before' | 'after' | 'change') => `${DATA_BASE}/tiles/${set}/{z}/{x}/{y}.png`,
   projectionTiles: (step: number) => `${DATA_BASE}/tiles/projection/${step}/{z}/{x}/{y}.png`,
+  projectionChangeTiles: (step: number) => `${DATA_BASE}/tiles/projection-change/${step}/{z}/{x}/{y}.png`,
 };
 
 /** Percent-cleared steps the pipeline cut terrain tiles for (make_projection_tiles.py). */

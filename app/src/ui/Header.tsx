@@ -1,5 +1,6 @@
 import { drape3d, epoch3d, exaggeration, imagery, mode, panel, summary, units } from '../state';
 import { summaryText } from '../content/summaryText';
+import { Coach } from './Coach';
 
 export function Header() {
   const s = summary.value;
@@ -19,10 +20,12 @@ export function Header() {
         </div>
       )}
       <div class="row">
-        <div class="seg" role="group" aria-label="View">
-          <button type="button" aria-pressed={mode.value === 'compare'} onClick={() => (mode.value = 'compare')}>Before / after</button>
-          <button type="button" aria-pressed={mode.value === 'change'} onClick={() => (mode.value = 'change')}>What changed</button>
-          <button type="button" aria-pressed={mode.value === '3d'} onClick={() => (mode.value = '3d')}>3D</button>
+        <span class="row-label" id="view-label">View</span>
+        <div class="seg coach-anchor" role="group" aria-labelledby="view-label">
+          <button type="button" aria-pressed={mode.value === 'compare'} onClick={() => (mode.value = 'compare')} title="Swipe between the 2013 and 2014 surfaces">Before / after</button>
+          <button type="button" aria-pressed={mode.value === 'change'} onClick={() => (mode.value = 'change')} title="Color the ground by how much it rose or fell">What changed</button>
+          <button type="button" aria-pressed={mode.value === '3d'} onClick={() => (mode.value = '3d')} title="Tilt the map onto real terrain">3D</button>
+          <Coach n={2} side="below">Switch views here. "What changed" colors the ground by how much it moved</Coach>
         </div>
         <div class="seg" role="group" aria-label="Units">
           <button type="button" aria-pressed={units.value === 'us'} onClick={() => (units.value = 'us')}>ft · yd³</button>

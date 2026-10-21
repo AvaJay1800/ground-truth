@@ -2,6 +2,28 @@
 
 Dated notes on what was built, what went wrong, what I learned, and one clip-worthy moment per phase.
 
+## 2026-10-20 — Onboarding, after the first real test
+
+David's first look found two things: he could not find how to draw, and the timeline did not seem to work. Drawing worked; it was three steps away with no cue on the map. The timeline worked; it hid the change colors while scrubbing and the flat deposit's hillshade barely moved, so the map looked broken. Both were feedback problems, and both are the kind a first-time user hits before anything else.
+
+**Built**
+
+- A map toolbar on the left edge: Draw, Clear, Help. Tools that act on the map live on the map.
+- In-draw guidance: crosshair cursor, a pill that follows the pointer and says what the next click does ("Click to place the first corner", then "Click to add a corner, or click the first corner to finish", always "Esc cancels"), Escape to cancel, and the Measure results opening when the shape closes.
+- A help toggle. Numbered coach marks on the swipe handle, the view switch, the draw tool, the tabs and the timeline. On by default for a first visit, remembered per device, and the "?" turns them off and on. Tooltips on every control.
+- A first-visit card, "Three things to try", with "Show me with hints", "Jump to drawing" and "Just explore". Reopenable from About this data.
+- Timeline feedback: `make_projection_tiles.py` now also cuts a change map per step, so the orange thins inside the corridor as the slider moves instead of disappearing; a play button runs the weeks over eight seconds; a "Projection" tag sits over the map with the week and date while scrubbing.
+
+**Problems hit**
+
+- My first attempt to reproduce the draw bug failed because the browser pane's emulated viewport scaled pointer events; in a native viewport it drew fine. Reproduce in the real thing before concluding.
+- Windows' application control policy started blocking the native DLL in shapely mid-session. The projection script only used it to project one polygon, so it now does that with pyproj on plain GeoJSON. `haul_prep.py` still needs shapely for the corridor buffer; its output is already saved.
+
+**Learned**
+
+- When a projection hides the measured thing, the user reads it as a bug. Show the projected version of the same layer instead.
+- Coach marks have to live in the component they describe, or they end up under a panel.
+
 ## 2026-10-19 — Phase 5: polish and publish
 
 **Built**
