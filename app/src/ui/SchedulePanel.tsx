@@ -7,11 +7,13 @@ import {
   climate, daylightOnly, daysPerWeek, freezingLoss, heavyRainLoss, nTrucks, rainLoss, secondShift, shiftHours,
   snowLoss, startMonth, startYear, timeline, units, weatherOn,
 } from '../state';
+import { Fold } from './Fold';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const num = (e: Event) => Number((e.target as HTMLInputElement).value);
 const fmtDate = (d: Date | null) => d ? d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) : 'not within 5 years';
 
+/** The calendar: finish date on top, the chart, the comparisons, and every variable one fold down. */
 export function SchedulePanel() {
   const c = climate.value;
   const m = haulModel();
@@ -27,38 +29,18 @@ export function SchedulePanel() {
     { label: `Start in ${MONTHS[(startMonth.value + 2) % 12]}`, o: { startMonth: ((startMonth.value + 2) % 12) + 1, startYear: startMonth.value + 3 > 12 ? startYear.value + 1 : startYear.value }, apply: () => { const nm = ((startMonth.value + 2) % 12) + 1; if (nm < startMonth.value) startYear.value += 1; startMonth.value = nm; } },
     { label: weatherOn.value ? 'No weather delays' : 'Weather delays on', o: { weather: { enabled: !weatherOn.value } }, apply: () => (weatherOn.value = !weatherOn.value) },
   ];
+  const workSummary = `${MONTHS[startMonth.value - 1]} ${startYear.value} · ${shiftHours.value} h${secondShift.value ? ' × 2 shifts' : ''} · ${daysPerWeek.value} days a week${daylightOnly.value ? ' · daylight only' : ''} · weather ${weatherOn.value ? 'on' : 'off'}`;
+  const rulesSummary = `heavy rain ${heavyRainLoss.value}, rain ${rainLoss.value}, freezing ${freezingLoss.value}, snow ${snowLoss.value} days lost each`;
 
   return (
     <div>
       <p class="banner">A projection. The same what-if cleanup, put on a calendar with weekends, daylight and thirty years of weather. Every rule is editable.</p>
 
-      <h2>When and how long</h2>
-      <div class="fields">
-        <label class="field">Start month
-          <select value={startMonth.value} onChange={(e) => (startMonth.value = Number((e.target as HTMLSelectElement).value))}>
-            {MONTHS.map((n, i) => <option value={i + 1} key={n}>{n}</option>)}
-          </select>
-        </label>
-        <label class="field">Start year<input type="number" step="1" min="2014" max="2030" value={startYear.value} onChange={(e) => (startYear.value = Math.round(num(e)))} /></label>
-        <label class="field">Shift length (h)<input type="number" step="0.5" min="4" max="12" value={shiftHours.value} onChange={(e) => (shiftHours.value = num(e))} /></label>
-        <label class="field">Days per week
-          <select value={daysPerWeek.value} onChange={(e) => (daysPerWeek.value = Number((e.target as HTMLSelectElement).value))}>
-            <option value={5}>5 (Mon to Fri)</option>
-            <option value={6}>6 (add Saturday)</option>
-          </select>
-        </label>
-      </div>
-      <div class="row" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '4px 0 10px' }}>
-        <label class="check"><input type="checkbox" checked={secondShift.value} onChange={(e) => (secondShift.value = (e.target as HTMLInputElement).checked)} /> Second shift</label>
-        <label class="check"><input type="checkbox" checked={daylightOnly.value} onChange={(e) => (daylightOnly.value = (e.target as HTMLInputElement).checked)} /> Daylight only (no lights)</label>
-        <label class="check"><input type="checkbox" checked={weatherOn.value} onChange={(e) => (weatherOn.value = (e.target as HTMLInputElement).checked)} /> Weather delays</label>
-      </div>
-
       <div class="stat-grid">
         <div class="stat wide">
           <div class="k">Projected finish</div>
           <div class="v">{fmtDate(r.finish)}</div>
-          <div class="u">{weeks} weeks, {r.total_workdays} scheduled workdays, about {Math.round(r.total_lost_days)} lost to weather</div>
+          <div class="u">{weeks} weeks from {fmtDate(r.weeks[0]?.start ?? null)} · {r.total_workdays} scheduled workdays, about {Math.round(r.total_lost_days)} lost to weather</div>
         </div>
         <div class="stat"><div class="k">Production</div><div class="v">{formatVolume(m.bank_m3_per_hour * 10, u).value}<small>{formatVolume(1, u).unit}</small></div><div class="u">bank per 10 productive hours</div></div>
         <div class="stat"><div class="k">To move by truck</div><div class="v">{formatVolume(m.trucked_bank_m3, u).value}<small>{formatVolume(1, u).unit}</small></div><div class="u">bank; reuse on site is not trucked</div></div>
@@ -66,7 +48,8 @@ export function SchedulePanel() {
 
       <WeekChart r={r} u={u} />
 
-      <h2>What if</h2>
+      <h2>Compare changes</h2>
+      <p class="hint">Each row is the same job with one thing changed. Apply moves it into the work variables.</p>
       <table class="whatif">
         <thead><tr><th>Change</th><th>Finish</th><th>Difference</th><th></th></tr></thead>
         <tbody>
@@ -85,19 +68,44 @@ export function SchedulePanel() {
         </tbody>
       </table>
 
-      <h2>Weather rules</h2>
-      <p class="hint">Expected days lost per month, from thirty-year averages. Lost days are spread across the month, so a week in November loses a fraction of every day rather than whole days.</p>
-      <div class="fields">
-        <label class="field">Per heavy-rain day (≥ 0.5 in)<input type="number" step="0.25" min="0" max="1" value={heavyRainLoss.value} onChange={(e) => (heavyRainLoss.value = num(e))} /></label>
-        <label class="field">Per rain day (≥ 0.1 in)<input type="number" step="0.05" min="0" max="1" value={rainLoss.value} onChange={(e) => (rainLoss.value = num(e))} /></label>
-        <label class="field">Per freezing day (high ≤ 32 °F)<input type="number" step="0.25" min="0" max="1" value={freezingLoss.value} onChange={(e) => (freezingLoss.value = num(e))} /></label>
-        <label class="field">Per snow day (≥ 0.4 in)<input type="number" step="0.25" min="0" max="1" value={snowLoss.value} onChange={(e) => (snowLoss.value = num(e))} /></label>
-      </div>
+      <Fold title="Work variables" current={workSummary}>
+        <div class="fields">
+          <label class="field">Start month
+            <select value={startMonth.value} onChange={(e) => (startMonth.value = Number((e.target as HTMLSelectElement).value))}>
+              {MONTHS.map((n, i) => <option value={i + 1} key={n}>{n}</option>)}
+            </select>
+          </label>
+          <label class="field">Start year<input type="number" step="1" min="2014" max="2030" value={startYear.value} onChange={(e) => (startYear.value = Math.round(num(e)))} /></label>
+          <label class="field">Shift length (h)<input type="number" step="0.5" min="4" max="12" value={shiftHours.value} onChange={(e) => (shiftHours.value = num(e))} /></label>
+          <label class="field">Days per week
+            <select value={daysPerWeek.value} onChange={(e) => (daysPerWeek.value = Number((e.target as HTMLSelectElement).value))}>
+              <option value={5}>5 (Mon to Fri)</option>
+              <option value={6}>6 (add Saturday)</option>
+            </select>
+          </label>
+        </div>
+        <div class="row" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '8px 0 4px' }}>
+          <label class="check"><input type="checkbox" checked={secondShift.value} onChange={(e) => (secondShift.value = (e.target as HTMLInputElement).checked)} /> Second shift</label>
+          <label class="check"><input type="checkbox" checked={daylightOnly.value} onChange={(e) => (daylightOnly.value = (e.target as HTMLInputElement).checked)} /> Daylight only (no lights)</label>
+          <label class="check"><input type="checkbox" checked={weatherOn.value} onChange={(e) => (weatherOn.value = (e.target as HTMLInputElement).checked)} /> Weather delays</label>
+        </div>
+        <p class="hint">Trucks, hours per day and the cycle are set on the Plan tab; they feed the production rate above.</p>
+      </Fold>
+
+      <Fold title="Weather rules" current={rulesSummary}>
+        <p class="hint">Expected days lost per month, from thirty-year averages. Lost days are spread across the month, so a week in November loses a fraction of every day rather than whole days.</p>
+        <div class="fields">
+          <label class="field">Per heavy-rain day (≥ 0.5 in)<input type="number" step="0.25" min="0" max="1" value={heavyRainLoss.value} onChange={(e) => (heavyRainLoss.value = num(e))} /></label>
+          <label class="field">Per rain day (≥ 0.1 in)<input type="number" step="0.05" min="0" max="1" value={rainLoss.value} onChange={(e) => (rainLoss.value = num(e))} /></label>
+          <label class="field">Per freezing day (high ≤ 32 °F)<input type="number" step="0.25" min="0" max="1" value={freezingLoss.value} onChange={(e) => (freezingLoss.value = num(e))} /></label>
+          <label class="field">Per snow day (≥ 0.4 in)<input type="number" step="0.25" min="0" max="1" value={snowLoss.value} onChange={(e) => (snowLoss.value = num(e))} /></label>
+        </div>
+      </Fold>
 
       <ClimateStrip r={r} />
 
       <h2>Timeline on the map</h2>
-      <p class="hint">Drag the slider under the map to scrub week by week. The surface inside the corridor is interpolated between the March 24, 2014 ground and the cleared grade; it is a projection, not a survey.</p>
+      <p class="hint">Press play under the map, or drag the slider, to watch the corridor clear week by week. The surface inside the corridor is interpolated between the March 24, 2014 ground and the cleared grade; it is a projection, not a survey.</p>
       <button type="button" class="btn" onClick={() => (timeline.value = 0)} disabled={timeline.value === 0}>Reset to March 24, 2014</button>
     </div>
   );
@@ -194,9 +202,15 @@ function ClimateStrip({ r }: { r: ScheduleResult }) {
         ))}
       </div>
       <p class="hint">
-        Columns are monthly precipitation. Highlighted months are in the schedule. Source: {c.source.name}, grid point {c.source.grid_point.lat.toFixed(2)}, {c.source.grid_point.lon.toFixed(2)} at {Math.round(c.source.grid_point.elevation_m)} m; {c.source.note}.
-        {noaa && noaa[0] ? ` Cross-check: NOAA 1991 to 2020 normals at ${noaa[0].name} give ${precip(noaa.reduce((s, x) => s + (x.precip_mm ?? 0), 0))} a year against ${precip(c.months.reduce((s, x) => s + x.precip_mm, 0))} here; the reanalysis runs wetter than the valley gauge, so the lost-day counts lean cautious.` : ''}
+        Columns are monthly precipitation; highlighted months are in the schedule. That is why a job that starts in July runs into trouble: the wet months are the short ones.
       </p>
+      <details>
+        <summary>Where the climate numbers come from</summary>
+        <p class="hint">
+          {c.source.name}, grid point {c.source.grid_point.lat.toFixed(2)}, {c.source.grid_point.lon.toFixed(2)} at {Math.round(c.source.grid_point.elevation_m)} m; {c.source.note}.
+          {noaa && noaa[0] ? ` Cross-check: NOAA 1991 to 2020 normals at ${noaa[0].name} give ${precip(noaa.reduce((s, x) => s + (x.precip_mm ?? 0), 0))} a year against ${precip(c.months.reduce((s, x) => s + x.precip_mm, 0))} here; the reanalysis runs wetter than the valley gauge, so the lost-day counts lean cautious.` : ''}
+        </p>
+      </details>
     </figure>
   );
 }

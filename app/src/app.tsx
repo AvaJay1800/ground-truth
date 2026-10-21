@@ -141,14 +141,14 @@ export function App() {
 
       <aside class={`card panel ${panelOpen.value ? '' : 'tucked'}`} aria-label="Details">
         <button type="button" class="sheet-toggle" aria-expanded={panelOpen.value} onClick={() => (panelOpen.value = !panelOpen.value)}>
-          {panelOpen.value ? 'Hide details' : 'Measure, plan, schedule, about'}
+          {panelOpen.value ? 'Hide details' : 'Measure, plan, schedule, sources'}
         </button>
         <div class="tabs coach-anchor" role="tablist">
           <button type="button" role="tab" aria-selected={panel.value === 'measure'} onClick={() => (panel.value = 'measure')} title="Cut and fill for the area you draw">Measure</button>
-          <button type="button" role="tab" aria-selected={panel.value === 'haul'} onClick={() => (panel.value = 'haul')} title="What it would take to clear the highway: trucks, pits, routes">Plan a cleanup</button>
+          <button type="button" role="tab" aria-selected={panel.value === 'haul'} onClick={() => (panel.value = 'haul')} title="What it would take to clear the highway: trucks, pits, routes">Plan</button>
           <button type="button" role="tab" aria-selected={panel.value === 'schedule'} onClick={() => (panel.value = 'schedule')} title="Put the cleanup on a calendar with weekends, daylight and weather">Schedule</button>
-          <button type="button" role="tab" aria-selected={panel.value === 'about'} onClick={() => (panel.value = 'about')} title="Where every number comes from">About this data</button>
-          <Coach n={4} side="below">Measure, then plan the cleanup, then put it on a calendar</Coach>
+          <button type="button" role="tab" aria-selected={panel.value === 'about'} onClick={() => (panel.value = 'about')} title="Where every number comes from, and what the map cannot tell you">Sources</button>
+          <Coach n={4} side="below">Measure, then plan the cleanup, then put it on a calendar. Sources explains every number</Coach>
         </div>
         <div class="panel-body" role="tabpanel" aria-label={panel.value ?? 'details'}>
           {panel.value === 'measure' && <MeasurePanel onDraw={startDraw} onClear={clearDraw} />}

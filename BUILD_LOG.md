@@ -19,10 +19,16 @@ David's first look found two things: he could not find how to draw, and the time
 - My first attempt to reproduce the draw bug failed because the browser pane's emulated viewport scaled pointer events; in a native viewport it drew fine. Reproduce in the real thing before concluding.
 - Windows' application control policy started blocking the native DLL in shapely mid-session. The projection script only used it to project one polygon, so it now does that with pyproj on plain GeoJSON. `haul_prep.py` still needs shapely for the corridor buffer; its output is already saved.
 
+**Also built, same day: naming and progressive disclosure**
+
+- Tabs are tasks now: Measure, Plan, Schedule, Sources. The schedule's controls are "Work variables" and the comparison table is "Compare changes", which was David's own note on the screenshot.
+- Plan leads with three numbers (debris to remove, truckloads, working days) and one sentence; the six steps became folds whose summary line shows the choice in use ("Cat 745 articulated haul truck, 25.6 m³ a load"). Schedule leads with the finish date and the chart; work variables and weather rules fold away the same way; the climate strip stays visible because it is the explanation, and its sourcing folds.
+
 **Learned**
 
 - When a projection hides the measured thing, the user reads it as a bug. Show the projected version of the same layer instead.
 - Coach marks have to live in the component they describe, or they end up under a panel.
+- A fold that shows its current value when closed is the whole trick: the expert sees every assumption at a glance, the non-expert never has to open one.
 
 ## 2026-10-19 — Phase 5: polish and publish
 
