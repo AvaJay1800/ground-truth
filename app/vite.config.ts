@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
-import { createReadStream, statSync, existsSync } from 'node:fs';
+import { createReadStream, statSync, existsSync, readFileSync } from 'node:fs';
 import { resolve, join, extname } from 'node:path';
 
 // In development the pipeline outputs under ../data/derived are served at /data with
@@ -47,10 +47,28 @@ function serveDerivedData(): Plugin {
   };
 }
 
+// MapLibre 6 loads its worker with new URL('./maplibre-gl-worker.mjs', import.meta.url),
+// which the bundle resolves to /assets/maplibre-gl-worker.mjs. The bundler does not emit
+// that file, so without this the production map never starts (the request falls through
+// to the site's index.html). Copy the worker, which is self-contained, next to the bundle.
+function copyMaplibreWorker(): Plugin {
+  return {
+    name: 'copy-maplibre-worker',
+    apply: 'build',
+    generateBundle() {
+      const dist = resolve(import.meta.dirname, 'node_modules', 'maplibre-gl', 'dist');
+      for (const name of ['maplibre-gl-worker.mjs']) {
+        const file = join(dist, name);
+        if (existsSync(file)) this.emitFile({ type: 'asset', fileName: `assets/${name}`, source: readFileSync(file) });
+      }
+    },
+  };
+}
+
 export default defineConfig(({ command }) => ({
   // Deployed under daviddonnell.com/demos/ground-truth/; dev serves at the root.
   base: command === 'build' ? '/demos/ground-truth/' : '/',
-  plugins: [preact(), serveDerivedData()],
+  plugins: [preact(), serveDerivedData(), copyMaplibreWorker()],
   // MapLibre loads its worker with new URL(..., import.meta.url); pre-bundling breaks that path.
   optimizeDeps: { exclude: ['maplibre-gl'] },
   test: {
